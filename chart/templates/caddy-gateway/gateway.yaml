@@ -1,0 +1,26 @@
+{{- if .Values.caddyGateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: {{ .Values.caddyGateway.gatewayClassName }}
+spec:
+  controllerName: caddyserver.com/gateway-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.caddyGateway.gatewayName }}
+  namespace: {{ .Values.caddyGateway.gatewayNamespace }}
+spec:
+  gatewayClassName: {{ .Values.caddyGateway.gatewayClassName }}
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ .Values.caddyGateway.hostname | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: caddy-acme-cert
+{{- end }}

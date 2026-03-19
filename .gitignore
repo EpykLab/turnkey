@@ -1,0 +1,2 @@
+.pulumi-state/
+pulumi/Pulumi.*.yaml

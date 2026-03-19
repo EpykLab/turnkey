@@ -1,0 +1,45 @@
+{{- if .Values.doppler.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.doppler.serviceTokenSecretName }}
+  namespace: {{ .Values.doppler.operatorNamespace }}
+type: Opaque
+stringData:
+  serviceToken: CHANGEME
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: doppler-operator
+  namespace: {{ .Values.doppler.operatorNamespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: doppler-operator
+  template:
+    metadata:
+      labels:
+        app: doppler-operator
+    spec:
+      containers:
+        - name: operator
+          image: dopplerhq/kubernetes-operator:1.4.1
+          env:
+            - name: DOPPLER_TOKEN_SECRET
+              value: {{ .Values.doppler.serviceTokenSecretName }}
+            - name: DOPPLER_PROJECT
+              value: {{ .Values.doppler.project }}
+            - name: DOPPLER_CONFIG
+              value: {{ .Values.doppler.config }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.doppler.targetSecretName }}
+  namespace: {{ .Values.doppler.targetNamespace }}
+type: Opaque
+stringData:
+  managed-by: doppler-operator
+{{- end }}

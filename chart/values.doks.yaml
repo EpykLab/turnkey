@@ -1,0 +1,12 @@
+global:
+  provider: doks
+  environment: dev
+
+cilium:
+  doksCompatibilityMode: true
+
+caddyGateway:
+  hostname: turnkey.stellarbridge.app
+
+doppler:
+  config: dev

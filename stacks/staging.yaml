@@ -1,0 +1,15 @@
+config:
+  cluster.provider: aks
+  cluster.provisionMode: existing
+  cluster.name: turnkey-staging
+  cluster.region: usgovvirginia
+  cluster.nodeCount: "3"
+  cluster.nodeSize: Standard_D4s_v5
+  cluster.env: staging
+  cluster.kubeconfig: ""
+  argocd.repoUrl: https://github.com/stellarbridge/turnkey
+  argocd.targetRevision: main
+  argocd.path: bootstrap
+  doppler.project: stellarbridge
+  doppler.config: staging
+  otel.elasticEndpoint: https://elastic.internal:4317

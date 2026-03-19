@@ -1,0 +1,15 @@
+global:
+  provider: aks
+  environment: prod
+
+cilium:
+  aksByoCni: false
+
+caddyGateway:
+  hostname: turnkey.gov.stellarbridge.app
+
+doppler:
+  config: prod
+
+otel:
+  elasticEndpoint: https://elastic.gov.internal:4317

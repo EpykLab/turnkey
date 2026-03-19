@@ -1,0 +1,45 @@
+global:
+  environment: dev
+  clusterName: turnkey-dev
+  provider: aks
+
+argocd:
+  namespace: argocd
+  repoUrl: https://github.com/stellarbridge/turnkey
+  targetRevision: main
+  path: chart
+
+cilium:
+  enabled: true
+  kubeProxyReplacement: true
+  hubble:
+    enabled: true
+
+caddyGateway:
+  enabled: true
+  gatewayClassName: caddy
+  gatewayName: public-gateway
+  gatewayNamespace: gateway-system
+  hostname: turnkey.example.com
+  email: platform@stellarbridge.app
+
+kyverno:
+  enabled: true
+  policyMode:
+    imageDigestPinning: Audit
+    defaultDenyAbsence: Audit
+    namespaceScopedRoles: Audit
+
+doppler:
+  enabled: true
+  operatorNamespace: doppler-operator-system
+  project: stellarbridge
+  config: dev
+  serviceTokenSecretName: doppler-service-token
+  targetNamespace: turnkey-system
+  targetSecretName: turnkey-platform-secrets
+
+otel:
+  enabled: true
+  namespace: observability
+  elasticEndpoint: https://elastic.internal:4317

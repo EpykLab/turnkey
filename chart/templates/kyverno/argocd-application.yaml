@@ -8,10 +8,13 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   project: default
-  source:
-    repoURL: https://kyverno.github.io/kyverno/
-    chart: kyverno
-    targetRevision: "3.3.5"
+  sources:
+    - repoURL: https://kyverno.github.io/kyverno/
+      chart: kyverno
+      targetRevision: "3.3.5"
+    - repoURL: {{ .Values.argocd.repoUrl | quote }}
+      path: policies
+      targetRevision: {{ .Values.argocd.targetRevision | quote }}
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno

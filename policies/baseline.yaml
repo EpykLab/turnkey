@@ -1,10 +1,8 @@
-{{- if .Values.kyverno.enabled }}
+# Plain manifests (no Helm). Applied as Argo CD second source after Kyverno chart (see chart/templates/kyverno/argocd-application.yaml).
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: disallow-privileged
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
 spec:
   validationFailureAction: Enforce
   background: true
@@ -27,8 +25,6 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: require-resources-and-probes
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
 spec:
   validationFailureAction: Enforce
   background: true
@@ -67,10 +63,8 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: image-hygiene
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
 spec:
-  validationFailureAction: {{ .Values.kyverno.policyMode.imageDigestPinning }}
+  validationFailureAction: Audit
   background: true
   rules:
     - name: no-latest-tag
@@ -84,4 +78,3 @@ spec:
           spec:
             containers:
               - image: "!*:latest"
-{{- end }}

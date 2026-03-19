@@ -29,6 +29,6 @@ argocd_destroy_cleanup() {
 
   echo "    (${ns}) clear namespace spec.finalizers (if terminating)"
   kubectl patch namespace "${ns}" --type=merge -p '{"spec":{"finalizers":[]}}' 2>/dev/null || true
-
-  kubectl delete namespace "${ns}" --wait=false --ignore-not-found=true 2>/dev/null || true
+  # Do not delete the namespace here: Pulumi owns Helm uninstall + Namespace deletion. Deleting the ns early
+  # leaves the Helm release orphaned and causes "release: not found" on destroy.
 }

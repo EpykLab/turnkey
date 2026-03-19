@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: turnkey-status-page
+  namespace: turnkey-status
+  labels:
+    app.kubernetes.io/name: turnkey-status-page
+    app.kubernetes.io/component: status-page
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: turnkey-status-page
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: turnkey-status-page
+        app.kubernetes.io/component: status-page
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: nginx
+          # Non-root, listens on 8080 by default
+          image: docker.io/nginxinc/nginx-unprivileged:1.27-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+      volumes:
+        - name: html
+          configMap:
+            name: turnkey-status-html

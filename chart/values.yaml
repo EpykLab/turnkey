@@ -44,3 +44,7 @@ otel:
   enabled: true
   namespace: observability
   elasticEndpoint: https://elastic.internal:4317
+
+# Public HTTP status page (LoadBalancer :80) synced last (Argo wave 100) after Kyverno + policies.
+statusPage:
+  enabled: true

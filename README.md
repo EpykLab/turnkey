@@ -40,3 +40,9 @@ Non-interactive destroy + reprovision + health gates (runs `pulumi refresh` firs
 ```bash
 ./scripts/e2e-doks-rebuild.sh
 ```
+
+## Status page (smoke URL)
+
+When `statusPage.enabled` is true (default), Argo syncs app **`turnkey-status-page`** last (wave 100) from `deploy/status-page/`: nginx on **8080** behind a **LoadBalancer** on **port 80**. After DigitalOcean assigns an IP or hostname, open `http://<lb>/` to confirm the cluster is up.
+
+Note: a cloud LoadBalancer may incur cost on DO; disable via `statusPage.enabled: false` in your values overlay if you do not want it.

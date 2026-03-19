@@ -89,7 +89,7 @@ kubectl wait --for=condition=available deployment/argocd-server -n argocd --time
 
 echo ">>> Waiting for Argo CD Applications (Synced + Healthy)"
 DEADLINE=$((SECONDS + 2400))
-apps=(turnkey-root turnkey-platform turnkey-kyverno turnkey-kyverno-policies)
+apps=(turnkey-root turnkey-platform turnkey-kyverno turnkey-kyverno-policies turnkey-status-page)
 all_green=0
 while (( SECONDS < DEADLINE )); do
   all_green=1
@@ -123,5 +123,30 @@ kubectl rollout status deployment/kyverno-reports-controller -n kyverno --timeou
 
 echo ">>> ClusterPolicies"
 kubectl get clusterpolicy
+
+echo ">>> Status page LoadBalancer (port 80)"
+sp_ok=0
+for i in $(seq 1 90); do
+  lb_ip="$(kubectl get svc turnkey-status-page -n turnkey-status -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+  lb_host="$(kubectl get svc turnkey-status-page -n turnkey-status -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)"
+  target=""
+  if [[ -n "${lb_ip}" ]]; then
+    target="${lb_ip}"
+  elif [[ -n "${lb_host}" ]]; then
+    target="${lb_host}"
+  fi
+  if [[ -n "${target}" ]] && curl -sf --connect-timeout 10 --max-time 20 "http://${target}/" | grep -q "Turnkey"; then
+    echo ">>> Status page responds: http://${target}/"
+    sp_ok=1
+    break
+  fi
+  echo "    waiting for LB / HTTP (${i}/90) ip=${lb_ip:-?} host=${lb_host:-?}"
+  sleep 10
+done
+if (( sp_ok != 1 )); then
+  echo "Timed out waiting for status page LoadBalancer or HTTP content" >&2
+  kubectl get svc -n turnkey-status -o wide || true
+  exit 1
+fi
 
 echo "E2E OK"

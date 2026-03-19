@@ -6,7 +6,7 @@ global:
 argocd:
   namespace: argocd
   repoUrl: https://github.com/EpykLab/turnkey
-  targetRevision: main
+  targetRevision: master
   path: chart
 
 cilium:

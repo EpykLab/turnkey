@@ -8,7 +8,7 @@ config:
   cluster.env: prod
   cluster.kubeconfig: ""
   argocd.repoUrl: https://github.com/EpykLab/turnkey
-  argocd.targetRevision: main
+  argocd.targetRevision: master
   argocd.path: bootstrap
   doppler.project: stellarbridge
   doppler.config: prod

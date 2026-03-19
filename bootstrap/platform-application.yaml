@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/EpykLab/turnkey
-    targetRevision: main
+    targetRevision: master
     path: chart
     helm:
       valueFiles:

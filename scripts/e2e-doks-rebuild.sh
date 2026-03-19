@@ -3,25 +3,38 @@
 # Argo CD and Kyverno are Synced/Healthy with no manual kubectl steps.
 set -euo pipefail
 
+if ! command -v pulumi >/dev/null 2>&1 && [[ -x "${HOME}/.pulumi/bin/pulumi" ]]; then
+  PATH="${HOME}/.pulumi/bin:${PATH}"
+  export PATH
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}/pulumi"
 
 : "${PULUMI_STACK:=dev}"
-export PULUMI_K8S_DELETE_UNREACHABLE="${PULUMI_K8S_DELETE_UNREACHABLE:-true}"
 
 pulumi stack select "${PULUMI_STACK}"
+
+export PULUMI_K8S_DELETE_UNREACHABLE="${PULUMI_K8S_DELETE_UNREACHABLE:-true}"
+
+echo ">>> pulumi refresh (reconcile state if the cluster was deleted out-of-band)"
+pulumi refresh --yes --skip-preview
 
 CLUSTER_NAME="$(pulumi config get cluster.name 2>/dev/null || true)"
 PROVIDER="$(pulumi config get cluster.provider 2>/dev/null || true)"
 
-if [[ "${PROVIDER}" == "doks" ]] && command -v doctl >/dev/null 2>&1 && [[ -n "${DIGITALOCEAN_TOKEN:-}" && -n "${CLUSTER_NAME}" ]]; then
-  echo ">>> Pre-delete DOKS cluster ${CLUSTER_NAME} (if present) for a clean teardown"
+# IMPORTANT: do not delete the DOKS cluster before Pulumi finishes uninstalling Helm/Argo or destroy will fail.
+# If a prior run left the stack wedged (cluster gone but state remains), set RECOVER_ORPHAN_DOKS=1.
+if [[ "${RECOVER_ORPHAN_DOKS:-}" == "1" ]] && [[ "${PROVIDER}" == "doks" ]] && command -v doctl >/dev/null 2>&1 && [[ -n "${DIGITALOCEAN_TOKEN:-}" && -n "${CLUSTER_NAME}" ]]; then
+  echo ">>> RECOVER_ORPHAN_DOKS: deleting stray DOKS cluster ${CLUSTER_NAME} (if any)"
   doctl kubernetes cluster delete "${CLUSTER_NAME}" --force --dangerous 2>/dev/null || true
-  sleep 10
+  sleep 15
+  echo ">>> RECOVER_ORPHAN_DOKS: reconciling Pulumi state with cloud"
+  pulumi refresh --yes --skip-preview || true
 fi
 
 echo ">>> pulumi destroy"
-pulumi destroy --yes --skip-preview || true
+pulumi destroy --yes --skip-preview
 
 echo ">>> pulumi up"
 pulumi up --yes --skip-preview

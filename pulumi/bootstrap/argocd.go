@@ -12,6 +12,8 @@ import (
 func NewProvider(ctx *pulumi.Context, kubeconfig pulumi.StringOutput) (*kubernetes.Provider, error) {
 	return kubernetes.NewProvider(ctx, "turnkey-k8s", &kubernetes.ProviderArgs{
 		Kubeconfig: kubeconfig,
+		// Allows destroy/refresh when the API server is gone (manual cluster delete, failed prior destroy).
+		DeleteUnreachable: pulumi.Bool(true),
 	})
 }
 

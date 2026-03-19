@@ -13,6 +13,15 @@ spec:
           - resources:
               kinds:
                 - Pod
+      exclude:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - kyverno
+                - kube-system
+                - argocd
       validate:
         message: "Privileged containers are not allowed."
         pattern:
@@ -34,6 +43,14 @@ spec:
         any:
           - resources:
               kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces:
+                - kyverno
+                - kube-system
+                - argocd
       validate:
         message: "CPU/memory requests and limits are required."
         pattern:
@@ -51,6 +68,14 @@ spec:
         any:
           - resources:
               kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces:
+                - kyverno
+                - kube-system
+                - argocd
       validate:
         message: "readinessProbe and livenessProbe are required."
         pattern:

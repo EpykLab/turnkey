@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/stellarbridge/turnkey
+    repoURL: https://github.com/EpykLab/turnkey
     targetRevision: main
     path: chart
     helm:

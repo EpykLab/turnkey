@@ -7,7 +7,7 @@ config:
   cluster.nodeSize: Standard_D4s_v5
   cluster.env: prod
   cluster.kubeconfig: ""
-  argocd.repoUrl: https://github.com/stellarbridge/turnkey
+  argocd.repoUrl: https://github.com/EpykLab/turnkey
   argocd.targetRevision: main
   argocd.path: bootstrap
   doppler.project: stellarbridge

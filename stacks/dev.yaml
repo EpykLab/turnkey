@@ -8,7 +8,7 @@ config:
   cluster.nodeSize: s-1vcpu-2gb
   cluster.env: dev
   cluster.kubeconfig: ""
-  argocd.repoUrl: https://github.com/stellarbridge/turnkey
+  argocd.repoUrl: https://github.com/EpykLab/turnkey
   argocd.targetRevision: main
   argocd.path: bootstrap
   doppler.project: stellarbridge

@@ -90,26 +90,26 @@ kubectl wait --for=condition=available deployment/argocd-server -n argocd --time
 echo ">>> Waiting for Argo CD Applications (Synced + Healthy)"
 DEADLINE=$((SECONDS + 2400))
 apps=(turnkey-root turnkey-platform turnkey-kyverno turnkey-kyverno-policies)
-all_green=false
+all_green=0
 while (( SECONDS < DEADLINE )); do
-  all_green=true
+  all_green=1
   for a in "${apps[@]}"; do
-    sync="$(kubectl get application "${a}" -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")"
-    health="$(kubectl get application "${a}" -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")"
+    sync="$(kubectl get application "${a}" -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+    health="$(kubectl get application "${a}" -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
     if [[ "${sync}" != "Synced" || "${health}" != "Healthy" ]]; then
-      all_green=false
+      all_green=0
       echo "    ${a}: sync=${sync:-?} health=${health:-?}"
       break
     fi
   done
-  if ${all_green}; then
+  if (( all_green == 1 )); then
     echo ">>> All Argo applications healthy"
     break
   fi
   sleep 15
 done
 
-if ! ${all_green}; then
+if (( all_green != 1 )); then
   echo "Timed out waiting for Argo CD applications" >&2
   kubectl get applications -n argocd -o wide || true
   exit 1

@@ -8,13 +8,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   project: default
-  sources:
-    - repoURL: https://kyverno.github.io/kyverno/
-      chart: kyverno
-      targetRevision: "3.3.5"
-    - repoURL: {{ .Values.argocd.repoUrl | quote }}
-      path: policies
-      targetRevision: {{ .Values.argocd.targetRevision | quote }}
+  source:
+    repoURL: https://kyverno.github.io/kyverno/
+    chart: kyverno
+    targetRevision: "3.3.5"
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
@@ -24,4 +21,30 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Large Kyverno CRDs + SSA can exceed annotation size limits on the API server.
+      - ServerSideApply=false
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-kyverno-policies
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.argocd.repoUrl | quote }}
+    path: policies
+    targetRevision: {{ .Values.argocd.targetRevision | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=false
 {{- end }}

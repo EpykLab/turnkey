@@ -68,6 +68,14 @@ func ApplyRootApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, argocdR
 						"selfHeal": true,
 					},
 					"syncOptions": []string{"CreateNamespace=true"},
+					"retry": map[string]interface{}{
+						"limit": 15,
+						"backoff": map[string]interface{}{
+							"duration":    "10s",
+							"factor":      2,
+							"maxDuration": "5m",
+						},
+					},
 				},
 			},
 		},

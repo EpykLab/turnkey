@@ -18,6 +18,18 @@ spec:
         crds:
           annotations:
             argocd.argoproj.io/sync-options: Replace=true
+        admissionController:
+          extraInitContainers:
+            - name: wait-kyverno-crds
+              image: docker.io/bitnami/kubectl:1.31
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/bash
+                - -ec
+                - |
+                  for crd in clusterpolicies.kyverno.io policies.kyverno.io; do
+                    kubectl wait --for=condition=Established "crd/$crd" --timeout=600s
+                  done
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
@@ -25,6 +37,12 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
       # Large Kyverno CRDs + SSA can exceed annotation size limits on the API server.
@@ -50,6 +68,12 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=false

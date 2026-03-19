@@ -58,6 +58,8 @@ func main() {
 
 		ctx.Export("clusterName", pulumi.String(clusterName))
 		ctx.Export("provider", pulumi.String(provider))
+		// Lets CI and scripts run kubectl waits after `pulumi up` without manual kubeconfig plumbing.
+		ctx.Export("kubeconfig", pulumi.ToSecret(kubeconfig))
 		return nil
 	})
 }

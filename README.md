@@ -28,3 +28,15 @@ pulumi stack select dev
 pulumi config set-all --path cluster.kubeconfig="<kubeconfig>"
 pulumi up
 ```
+
+## Full DOKS rebuild (automated E2E)
+
+Requires `pulumi` logged in, `DIGITALOCEAN_TOKEN`, `kubectl`, and `doctl` (optional but recommended for clean destroys). After `pulumi up`, kubeconfig is available as a stack output:
+
+`pulumi stack output kubeconfig --show-secrets > kubeconfig`
+
+Non-interactive destroy + reprovision + health gates:
+
+```bash
+./scripts/e2e-doks-rebuild.sh
+```

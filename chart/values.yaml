@@ -31,7 +31,8 @@ kyverno:
     namespaceScopedRoles: Audit
 
 doppler:
-  enabled: true
+  # Off until Doppler project + service token are wired; avoids CrashLoop on smoke tests.
+  enabled: false
   operatorNamespace: doppler-operator-system
   project: stellarbridge
   config: dev

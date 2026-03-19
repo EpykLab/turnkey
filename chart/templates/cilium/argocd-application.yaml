@@ -1,0 +1,29 @@
+{{- if .Values.cilium.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-cilium
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  project: default
+  source:
+    repoURL: https://helm.cilium.io/
+    chart: cilium
+    targetRevision: "1.16.5"
+    helm:
+      values: |
+        kubeProxyReplacement: {{ .Values.cilium.kubeProxyReplacement }}
+        hubble:
+          enabled: {{ .Values.cilium.hubble.enabled }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

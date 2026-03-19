@@ -18,6 +18,8 @@ Turnkey is the platform baseline for provisioning and bootstrapping Kubernetes c
 4. Root app syncs `bootstrap/`, which declares the platform app.
 5. Platform app syncs the Helm chart from `chart/`.
 
+`bootstrap/platform-application.yaml` currently uses Helm `valueFiles` `values.yaml` + `values.doks.yaml` for DigitalOcean. For AKS, point `valueFiles` at `values.aks.yaml` instead (or add a second Application per environment).
+
 ## Quick start
 
 ```bash

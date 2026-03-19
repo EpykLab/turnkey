@@ -3,6 +3,8 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: disallow-privileged
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
 spec:
   validationFailureAction: Enforce
   background: true
@@ -25,6 +27,8 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: require-resources-and-probes
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
 spec:
   validationFailureAction: Enforce
   background: true
@@ -63,6 +67,8 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: image-hygiene
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
 spec:
   validationFailureAction: {{ .Values.kyverno.policyMode.imageDigestPinning }}
   background: true

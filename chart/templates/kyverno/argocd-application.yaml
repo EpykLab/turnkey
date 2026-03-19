@@ -1,24 +1,24 @@
+{{- if .Values.kyverno.enabled }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: turnkey-platform
+  name: turnkey-kyverno
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   project: default
   source:
-    repoURL: https://github.com/EpykLab/turnkey
-    targetRevision: main
-    path: chart
-    helm:
-      valueFiles:
-        - values.yaml
-        - values.doks.yaml
+    repoURL: https://kyverno.github.io/kyverno/
+    chart: kyverno
+    targetRevision: "3.3.5"
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: kyverno
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+{{- end }}

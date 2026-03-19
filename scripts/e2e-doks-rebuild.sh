@@ -47,12 +47,18 @@ pulumi stack output kubeconfig --show-secrets --stack "${PULUMI_STACK}" >"${TMPK
 export KUBECONFIG="${TMPKCFG}"
 
 echo ">>> Waiting for API server"
+api_ok=false
 for _ in $(seq 1 120); do
   if kubectl get --raw=/readyz &>/dev/null; then
+    api_ok=true
     break
   fi
   sleep 5
 done
+if ! ${api_ok}; then
+  echo "Timed out waiting for Kubernetes API /readyz" >&2
+  exit 1
+fi
 
 echo ">>> Waiting for Argo CD server"
 kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=600s

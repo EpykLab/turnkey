@@ -18,6 +18,9 @@ spec:
         crds:
           annotations:
             argocd.argoproj.io/sync-options: Replace=true
+        # Post-upgrade Job uses bitnami/kubectl; optional hook is unnecessary for greenfield installs and can fail image pulls.
+        policyReportsCleanup:
+          enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno

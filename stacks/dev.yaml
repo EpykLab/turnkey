@@ -5,7 +5,8 @@ config:
   cluster.region: nyc1
   cluster.version: 1.35.1-do.0
   cluster.nodeCount: "1"
-  cluster.nodeSize: s-1vcpu-2gb
+  # Kyverno + Argo need more than 1 vCPU on a single-node dev cluster.
+  cluster.nodeSize: s-2vcpu-4gb
   cluster.env: dev
   cluster.kubeconfig: ""
   argocd.repoUrl: https://github.com/EpykLab/turnkey

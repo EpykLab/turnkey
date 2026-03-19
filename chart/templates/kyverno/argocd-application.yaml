@@ -21,10 +21,11 @@ spec:
         admissionController:
           extraInitContainers:
             - name: wait-kyverno-crds
-              image: docker.io/bitnami/kubectl:1.31
+              # bitnami/kubectl floating tags like :1.31 are not published; pin a real image.
+              image: docker.io/alpine/k8s:1.31.13
               imagePullPolicy: IfNotPresent
               command:
-                - /bin/bash
+                - /bin/sh
                 - -ec
                 - |
                   for crd in clusterpolicies.kyverno.io policies.kyverno.io; do

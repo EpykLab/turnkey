@@ -35,7 +35,7 @@ Requires `pulumi` logged in, `DIGITALOCEAN_TOKEN`, `kubectl`, and `doctl` (optio
 
 `pulumi stack output kubeconfig --show-secrets > kubeconfig`
 
-Non-interactive destroy + reprovision + health gates (runs `pulumi refresh` first so out-of-band cluster deletes do not wedge state; never deletes DOKS before Pulumi uninstalls Helm):
+Non-interactive destroy + reprovision + health gates (runs `pulumi refresh` first; pre-destroy clears Argo `Application` finalizers so the `argocd` namespace can delete after Helm uninstall keeps CRDs; never deletes DOKS before Pulumi uninstalls Helm):
 
 ```bash
 ./scripts/e2e-doks-rebuild.sh

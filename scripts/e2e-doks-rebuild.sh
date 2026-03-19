@@ -9,6 +9,8 @@ if ! command -v pulumi >/dev/null 2>&1 && [[ -x "${HOME}/.pulumi/bin/pulumi" ]];
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/argocd-destroy-cleanup.sh disable=SC1091
+source "${REPO_ROOT}/scripts/lib/argocd-destroy-cleanup.sh"
 cd "${REPO_ROOT}/pulumi"
 
 : "${PULUMI_STACK:=dev}"
@@ -33,8 +35,30 @@ if [[ "${RECOVER_ORPHAN_DOKS:-}" == "1" ]] && [[ "${PROVIDER}" == "doks" ]] && c
   pulumi refresh --yes --skip-preview || true
 fi
 
+echo ">>> Pre-destroy: clear Argo CD finalizers (Helm keeps CRDs; child Applications block ns delete)"
+TMP_PRE=$(mktemp)
+if pulumi stack output kubeconfig --show-secrets --stack "${PULUMI_STACK}" >"${TMP_PRE}" 2>/dev/null; then
+  export KUBECONFIG="${TMP_PRE}"
+  if kubectl get --raw=/readyz &>/dev/null; then
+    argocd_destroy_cleanup || true
+  fi
+  unset KUBECONFIG
+fi
+rm -f "${TMP_PRE}"
+
 echo ">>> pulumi destroy"
-pulumi destroy --yes --skip-preview
+if ! pulumi destroy --yes --skip-preview; then
+  echo ">>> Destroy failed; cleanup + refresh + one retry"
+  TMP_RETRY=$(mktemp)
+  if pulumi stack output kubeconfig --show-secrets --stack "${PULUMI_STACK}" >"${TMP_RETRY}" 2>/dev/null; then
+    export KUBECONFIG="${TMP_RETRY}"
+    argocd_destroy_cleanup || true
+    unset KUBECONFIG
+  fi
+  rm -f "${TMP_RETRY}"
+  pulumi refresh --yes --skip-preview || true
+  pulumi destroy --yes --skip-preview
+fi
 
 echo ">>> pulumi up"
 pulumi up --yes --skip-preview

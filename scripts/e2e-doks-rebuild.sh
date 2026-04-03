@@ -4,8 +4,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=/dev/null
+source "${ROOT}/scripts/lib/do-pulumi-env.sh"
 STACK="${STACK:-dev}"
 PULUMI_DIR="${ROOT}/pulumi"
+
+if [[ -z "${DIGITALOCEAN_TOKEN:-}" ]]; then
+	echo "ERROR: DIGITALOCEAN_TOKEN is not set and could not be read from ~/.config/doctl/config.yaml" >&2
+	exit 1
+fi
 
 cd "${PULUMI_DIR}"
 

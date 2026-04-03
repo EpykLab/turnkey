@@ -14,8 +14,9 @@ certManager:
   enabled: true
 
 # Controller only until ClusterSecretStore/SecretStore is GitOps'd; no backend required for install.
+# NOTE: Disabled due to CRD annotation size limit (262144 bytes) - re-enable when fixed
 externalSecrets:
-  enabled: true
+  enabled: false
 
 # Gateway API controller + TLS not installed in baseline smoke test.
 caddyGateway:

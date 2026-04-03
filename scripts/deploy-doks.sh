@@ -31,9 +31,17 @@ cd "${PULUMI_DIR}"
 echo "==> Selecting Pulumi stack: ${STACK}"
 pulumi stack select "${STACK}"
 
+# Keep Pulumi stack version aligned with stacks/<stack>.yaml (Pulumi.*.yaml is often gitignored).
+STACK_FILE="${ROOT}/stacks/${STACK}.yaml"
 if [[ -n "${DOKS_K8S_VERSION:-}" ]]; then
-	echo "==> Setting turnkey:cluster.version=${DOKS_K8S_VERSION}"
+	echo "==> Setting turnkey:cluster.version=${DOKS_K8S_VERSION} (from env)"
 	pulumi config set turnkey:cluster.version "${DOKS_K8S_VERSION}"
+elif [[ -f "${STACK_FILE}" ]]; then
+	VER="$(awk '/^[[:space:]]*cluster.version:/{print $2}' "${STACK_FILE}" | head -1)"
+	if [[ -n "${VER}" ]]; then
+		echo "==> Setting turnkey:cluster.version=${VER} (from ${STACK_FILE})"
+		pulumi config set turnkey:cluster.version "${VER}"
+	fi
 fi
 
 echo "==> pulumi up --yes --skip-preview"

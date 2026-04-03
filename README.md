@@ -9,6 +9,7 @@ Turnkey is the platform baseline for provisioning and bootstrapping Kubernetes c
 - `chart/`: platform baseline Helm chart (Argo CD managed).
 - `stacks/`: environment-level Pulumi configuration.
 - `docs/`: ADRs, runbooks, and compliance mapping.
+- `scripts/`: deployment and utility scripts.
 
 ## Bootstrap flow
 
@@ -20,13 +21,42 @@ Turnkey is the platform baseline for provisioning and bootstrapping Kubernetes c
 
 `bootstrap/platform-application.yaml` currently uses Helm `valueFiles` `values.yaml` + `values.doks.yaml` for DigitalOcean. For AKS, point `valueFiles` at `values.aks.yaml` instead (or add a second Application per environment).
 
-## Quick start
+## Quick start (DigitalOcean Kubernetes)
+
+Prerequisites: `doctl auth init`, `pulumi login`, `DIGITALOCEAN_TOKEN` env var set (or use `doctl auth token`).
+
+### Automated Deployment (Recommended)
+
+The `deploy-doks.sh` script handles the full deployment including health checks:
+
+```bash
+# Set your DigitalOcean token
+export DIGITALOCEAN_TOKEN=$(doctl auth token)
+
+# Run the deployment
+./scripts/deploy-doks.sh
+```
+
+This will:
+1. Provision the DOKS cluster with Pulumi
+2. Install ArgoCD
+3. Bootstrap all platform applications
+4. Wait for all applications to be Synced and Healthy
+
+### Manual Deployment
+
+If you prefer manual steps:
 
 ```bash
 cd pulumi
 pulumi stack select dev
-pulumi config set-all --path cluster.kubeconfig="<kubeconfig>"
 pulumi up
+
+# Get kubeconfig
+pulumi stack output kubeconfig --show-secrets > ~/.kube/turnkey-config
+export KUBECONFIG=~/.kube/turnkey-config
+
+# Wait for applications to sync (see bootstrap runbook)
 ```
 
 ## Full DOKS rebuild (automated E2E)
@@ -45,4 +75,83 @@ Non-interactive destroy + reprovision + health gates (runs `pulumi refresh` firs
 
 When `statusPage.enabled` is true (default), Argo syncs app **`turnkey-status-page`** last (wave 100) from `deploy/status-page/`: nginx on **8080** behind a **LoadBalancer** on **port 80**. After DigitalOcean assigns an IP or hostname, open `http://<lb>/` to confirm the cluster is up.
 
+**Example:** `http://206.189.252.251` (actual IP will vary)
+
 Note: a cloud LoadBalancer may incur cost on DO; disable via `statusPage.enabled: false` in your values overlay if you do not want it.
+
+## Platform Applications
+
+The following applications are deployed and managed by ArgoCD:
+
+| Application | Purpose | Status |
+|-------------|---------|--------|
+| cert-manager | TLS certificate management | Enabled |
+| ingress-nginx | Ingress controller (webhooks disabled) | Enabled |
+| kargo | GitOps promotion management | Enabled |
+| kyverno | Policy enforcement | Enabled |
+| kyverno-policies | Baseline security policies | Enabled |
+| tekton-pipeline | CI/CD pipelines | Enabled |
+| tekton-triggers | Webhook-triggered pipelines | Enabled |
+| doppler | Secrets synchronization | Enabled (requires token) |
+| external-secrets | External secrets operator | **Disabled** (see notes) |
+| status-page | Public health endpoint | Enabled |
+
+### External Secrets - Disabled
+
+External Secrets is currently **disabled by default** in `values.doks.yaml` because the CRDs exceed Kubernetes annotation size limits (262144 bytes). Even with `ServerSideApply=true`, the `ClusterSecretStore` and `SecretStore` CRDs fail to install.
+
+To enable External Secrets in the future:
+1. Wait for upstream fix to reduce CRD size, OR
+2. Install CRDs manually outside of ArgoCD, OR
+3. Use a custom values file with `installCRDs: false` and pre-install CRDs
+
+### Ingress Nginx - Admission Webhooks Disabled
+
+Ingress Nginx admission webhooks are disabled in `values.doks.yaml` to avoid Helm hook synchronization issues that can cause ArgoCD to get stuck on the first deployment.
+
+```yaml
+ingressNginx:
+  enabled: true
+  helmValues:
+    controller:
+      admissionWebhooks:
+        enabled: false
+```
+
+## Access Information
+
+### ArgoCD Web UI
+
+```bash
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+Then open: `https://localhost:8080`
+
+**Default credentials:**
+- Username: `admin`
+- Password: Get with `kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d`
+
+### Kargo
+
+Kargo is deployed with a default admin account:
+
+**Access:**
+```bash
+kubectl port-forward svc/kargo-api -n kargo 8443:443
+```
+
+Then open: `https://localhost:8443`
+
+**Credentials:**
+- Username: `admin`
+- Password: `turnkey-dev-admin`
+
+⚠️ **Warning:** This is a development-only password. Rotate via SealedSecret or ExternalSecret for production.
+
+## Documentation
+
+- `docs/runbooks/bootstrap.md` - Full bootstrap procedure
+- `docs/runbooks/drift-recovery.md` - Recover from configuration drift
+- `docs/runbooks/cert-manager-cloudflare-dns01.md` - TLS certificate setup
+- `docs/adr/` - Architecture Decision Records

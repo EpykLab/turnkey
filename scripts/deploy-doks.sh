@@ -83,26 +83,38 @@ echo "==> Waiting for Argo CD CRDs and control plane"
 kubectl wait --for=condition=Established "crd/applications.argoproj.io" --timeout=300s
 kubectl wait --for=condition=Available "deployment/argocd-server" -n argocd --timeout=600s
 
-echo "==> Waiting for turnkey-platform Application (sync + health, up to 45m)"
-# New clusters: many Helm child apps + Tekton/Kargo take time to become Healthy.
+echo "==> Waiting for all Applications to be healthy (up to 45m)"
+# Wait for ALL applications to be Synced and Healthy, not just turnkey-platform
 deadline=$((SECONDS + 2700))
 while ((SECONDS < deadline)); do
-	sync_h="$(kubectl get application turnkey-platform -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")"
-	health_h="$(kubectl get application turnkey-platform -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")"
-	echo "    turnkey-platform: sync=${sync_h:-?} health=${health_h:-?}"
-	if [[ "${sync_h}" == "Synced" && ( "${health_h}" == "Healthy" || "${health_h}" == "Progressing" ) ]]; then
-		echo "==> turnkey-platform is Synced with ${health_h}; printing app summary"
+	# Get all apps and their status
+	all_apps=$(kubectl get applications.argoproj.io -n argocd --no-headers 2>/dev/null | wc -l)
+	synced_apps=$(kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null | grep -c '"sync": "Synced"' || echo "0")
+	healthy_apps=$(kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null | grep -c '"status": "Healthy"' || echo "0")
+	
+	# Progress report every 30 seconds (every 3 iterations since we sleep 10s)
+	if (( SECONDS % 30 < 10 )); then
+		echo "    apps: ${synced_apps}/${all_apps} synced, ${healthy_apps}/${all_apps} healthy ($(date +%H:%M:%S))"
+	fi
+	
+	# Success: all apps are both synced and healthy
+	if [[ $all_apps -gt 0 && $synced_apps -eq $all_apps && $healthy_apps -eq $all_apps ]]; then
+		echo "==> All ${all_apps} applications synced and healthy!"
 		kubectl get applications.argoproj.io -n argocd -o wide || true
 		exit 0
 	fi
-	if [[ "${health_h}" == "Degraded" || "${health_h}" == "Missing" ]]; then
-		echo "ERROR: turnkey-platform health is ${health_h}. Check: kubectl describe application turnkey-platform -n argocd" >&2
+	
+	# Check if any app is degraded (not just turnkey-platform)
+	degraded=$(kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null | grep '"status": "Degraded"' | wc -l || echo "0")
+	if [[ $degraded -gt 0 ]]; then
+		echo "ERROR: ${degraded} application(s) degraded. Check: kubectl get applications.argoproj.io -n argocd -o wide" >&2
 		kubectl get applications.argoproj.io -n argocd -o wide || true
 		exit 1
 	fi
-	sleep 20
+	
+	sleep 10
 done
 
-echo "ERROR: timeout waiting for turnkey-platform. Current apps:" >&2
+echo "ERROR: timeout waiting for all applications to be healthy. Current status:" >&2
 kubectl get applications.argoproj.io -n argocd -o wide || true
 exit 1

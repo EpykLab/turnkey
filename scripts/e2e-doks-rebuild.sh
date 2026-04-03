@@ -6,6 +6,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "${ROOT}/scripts/lib/do-pulumi-env.sh"
+# shellcheck source=/dev/null
+source "${ROOT}/scripts/lib/pulumi-network.sh"
 STACK="${STACK:-dev}"
 PULUMI_DIR="${ROOT}/pulumi"
 

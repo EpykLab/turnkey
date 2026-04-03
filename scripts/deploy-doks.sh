@@ -13,6 +13,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 source "${ROOT}/scripts/lib/do-pulumi-env.sh"
+# shellcheck source=/dev/null
+source "${ROOT}/scripts/lib/pulumi-network.sh"
 
 STACK="${STACK:-dev}"
 PULUMI_DIR="${ROOT}/pulumi"
@@ -22,12 +24,26 @@ if [[ -z "${DIGITALOCEAN_TOKEN:-}" ]]; then
 	exit 1
 fi
 
-if command -v doctl >/dev/null 2>&1; then
-	echo "==> Verifying DigitalOcean API (doctl)"
-	doctl account get >/dev/null
+echo "==> Verifying DigitalOcean API"
+if command -v doctl >/dev/null 2>&1 && doctl account get >/dev/null 2>&1; then
+	: # doctl works (no IDE proxy in the way)
+elif command -v curl >/dev/null 2>&1; then
+	# doctl often breaks when Cursor injects HTTPS_PROXY; curl + NO_PROXY does not.
+	code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${DIGITALOCEAN_TOKEN}" https://api.digitalocean.com/v2/account)"
+	if [[ "${code}" != "200" ]]; then
+		echo "ERROR: DigitalOcean API returned HTTP ${code} (token or network)." >&2
+		exit 1
+	fi
+	echo "    (OK via HTTPS; doctl was skipped or failed — check IDE proxy settings)"
+else
+	echo "ERROR: need working \`doctl account get\` or \`curl\` to verify the token." >&2
+	exit 1
 fi
 
 cd "${PULUMI_DIR}"
+
+echo "==> Warming Go build (first compile can take minutes with no Pulumi output)"
+go build -o /tmp/turnkey-pulumi-langhost .
 
 echo "==> Selecting Pulumi stack: ${STACK}"
 pulumi stack select "${STACK}"
@@ -46,7 +62,11 @@ elif [[ -f "${STACK_FILE}" ]]; then
 fi
 
 echo "==> pulumi up --yes --skip-preview"
-pulumi up --yes --skip-preview
+if command -v stdbuf >/dev/null 2>&1; then
+	stdbuf -oL -eL pulumi up --yes --skip-preview
+else
+	pulumi up --yes --skip-preview
+fi
 
 KUBECONFIG_RAW="$(pulumi stack output kubeconfig --show-secrets -j 2>/dev/null | jq -r '.' 2>/dev/null || true)"
 if [[ -z "${KUBECONFIG_RAW}" || "${KUBECONFIG_RAW}" == "null" ]]; then

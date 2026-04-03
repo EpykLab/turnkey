@@ -9,6 +9,12 @@ cilium:
 
 ingressNginx:
   enabled: true
+  helmValues:
+    controller:
+      admissionWebhooks:
+        enabled: false
+      service:
+        type: LoadBalancer
 
 certManager:
   enabled: true

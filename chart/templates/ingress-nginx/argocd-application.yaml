@@ -31,4 +31,6 @@ spec:
         maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
+      # Skip ingress-nginx admission webhook hooks that can get stuck
+      - Validate=false
 {{- end }}

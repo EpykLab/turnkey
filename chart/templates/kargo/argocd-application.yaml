@@ -1,0 +1,35 @@
+{{- if .Values.kargo.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-kargo
+  namespace: argocd
+  annotations:
+    # After cert-manager (TLS for Kargo webhooks/API) and Kyverno policy wave.
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/akuity/kargo-charts
+    chart: kargo
+    targetRevision: {{ .Values.kargo.targetRevision | quote }}
+    helm:
+      releaseName: kargo
+      valuesObject:
+        {{- toYaml (.Values.kargo.helmValues | default dict) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.kargo.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

@@ -13,3 +13,6 @@ config:
   doppler.project: stellarbridge
   doppler.config: staging
   otel.elasticEndpoint: https://elastic.internal:4317
+  features.tekton: "false"
+  features.kargo: "false"
+  features.observability_stack: "false"

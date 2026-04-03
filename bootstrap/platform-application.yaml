@@ -1,3 +1,6 @@
+# Root platform Application (App-of-Apps child). Argo CD clones this repo from GitHub — commit and push
+# chart/bootstrap changes before expecting the live cluster to match your working tree.
+# For AKS (or other providers), swap the second value file to values.aks.yaml (or add a provider-specific overlay).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

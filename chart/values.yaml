@@ -9,8 +9,51 @@ argocd:
   targetRevision: master
   path: chart
 
-cilium:
+# Chosen ingress path (see Moving to K8s): nginx Ingress controller. Optional Cilium is for clusters
+# where replacing the CNI is intentional; leave off on DOKS/AKS default CNIs.
+ingressNginx:
   enabled: true
+  namespace: ingress-nginx
+  targetRevision: "4.15.1"
+  helmValues:
+    controller:
+      service:
+        type: LoadBalancer
+
+certManager:
+  enabled: true
+  namespace: cert-manager
+  targetRevision: "v1.20.1"
+
+externalSecrets:
+  enabled: false
+  namespace: external-secrets
+  targetRevision: "2.0.1"
+  helmValues: {}
+
+# CI / promotion (optional). DOKS overlay turns these on for full-stack dev clusters.
+tekton:
+  enabled: false
+  pipeline:
+    enabled: true
+  triggers:
+    enabled: true
+
+# OCI Helm chart (ghcr.io/akuity/kargo-charts). Dev-only admin credentials below — replace for real environments.
+kargo:
+  enabled: false
+  namespace: kargo
+  targetRevision: "1.9.5"
+  helmValues:
+    api:
+      adminAccount:
+        enabled: true
+        # Password: turnkey-dev-admin (bcrypt). Rotate via SealedSecret / ExternalSecret in production.
+        passwordHash: "$2b$10$yYvVLF/dW8JwA9U96PF/m.Nw2k4KOTPAytmuq.9E4kq4GZzJSa7dW"
+        tokenSigningKey: "NaZJng6wz4UCDUo1DGgjHLbfrfmOdQhwGsMgzU5tA8"
+
+cilium:
+  enabled: false
   kubeProxyReplacement: true
   hubble:
     enabled: true
@@ -42,6 +85,8 @@ doppler:
 
 otel:
   enabled: true
+  # When true, export telemetry to debug sink only (no Elastic backend required).
+  devMode: false
   namespace: observability
   elasticEndpoint: https://elastic.internal:4317
 

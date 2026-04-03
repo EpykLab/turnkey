@@ -22,6 +22,15 @@ spec:
                 - kyverno
                 - kube-system
                 - argocd
+                - cert-manager
+                - ingress-nginx
+                - external-secrets
+                - tekton-pipelines
+                - doppler-operator-system
+                - kargo
+                - kargo-cluster-secrets
+                - kargo-shared-resources
+                - kargo-system-resources
       validate:
         message: "Privileged containers are not allowed."
         pattern:
@@ -51,6 +60,15 @@ spec:
                 - kyverno
                 - kube-system
                 - argocd
+                - cert-manager
+                - ingress-nginx
+                - external-secrets
+                - tekton-pipelines
+                - doppler-operator-system
+                - kargo
+                - kargo-cluster-secrets
+                - kargo-shared-resources
+                - kargo-system-resources
       validate:
         message: "CPU/memory requests and limits are required."
         pattern:
@@ -76,6 +94,15 @@ spec:
                 - kyverno
                 - kube-system
                 - argocd
+                - cert-manager
+                - ingress-nginx
+                - external-secrets
+                - tekton-pipelines
+                - doppler-operator-system
+                - kargo
+                - kargo-cluster-secrets
+                - kargo-shared-resources
+                - kargo-system-resources
       validate:
         message: "readinessProbe and livenessProbe are required."
         pattern:

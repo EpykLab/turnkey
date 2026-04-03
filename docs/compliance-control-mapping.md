@@ -1,17 +1,23 @@
-# Turnkey Platform Compliance Control Mapping
+# Compliance control mapping (Turnkey baseline)
 
-This document maps platform controls implemented by Turnkey to SOC 2, HIPAA, and FedRAMP control families.
+This document ties Turnkey platform controls to the security posture described in the Stellerbridge Kubernetes migration plan. It is a living index: fill in control IDs and evidence locations as the program matures.
 
-## Mappings
+## Baseline enforcement (in repo today)
 
-- Cilium NetworkPolicy -> SOC 2 CC6.6, HIPAA 164.312(e)(1), FedRAMP SC.
-- Cilium mTLS -> SOC 2 CC6.7, HIPAA 164.312(e)(2)(i), FedRAMP SC-8.
-- Kyverno pod security/image policy -> SOC 2 CC6.1/CC7.1, HIPAA 164.312(a)(1), FedRAMP AC/SI.
-- Doppler secret management -> SOC 2 CC6.1, HIPAA 164.312(a)(2)(iv), FedRAMP IA.
-- OTel + Elastic audit trail -> SOC 2 CC7.2, HIPAA 164.312(b), FedRAMP AU.
-- Caddy Gateway TLS -> SOC 2 CC6.7, HIPAA 164.312(e)(2)(i), FedRAMP SC-8.
-- Argo CD GitOps change flow -> SOC 2 CC8.1, HIPAA 164.308(a)(5), FedRAMP CM.
+| Theme | Implementation | Notes |
+| --- | --- | --- |
+| Admission policies | Kyverno (`chart` → `turnkey-kyverno*`, `policies/baseline.yaml`) | Privileged containers denied; probes and resource requests/limits enforced for workloads outside platform namespaces. |
+| Ingress | ingress-nginx (Argo-managed child app) | Aligns with the nginx ingress decision; not the Stellerbridge tenant chart. |
+| TLS issuance | cert-manager (Argo-managed child app) | Install only in this phase; ClusterIssuers (e.g. Cloudflare DNS-01) are operator-managed after CRDs are healthy. |
+| Secret sync to cluster | External Secrets Operator (optional, `externalSecrets.enabled`) | Disabled by default until Azure Key Vault / other backend is configured. |
 
-## Inheritance Notes
+## FedRAMP / CMMC follow-ups
 
-AKS in Azure Government provides inherited controls at the cloud layer. Turnkey control inheritance boundaries are tracked separately in FedRAMP boundary documentation.
+- Map each Kyverno policy and platform choice to explicit control families (AC, AU, CM, SC, etc.).
+- Record evidence: repo paths, Argo Application names, and change-management process.
+- Track gaps called out in the migration journal (e.g. AKS managed provisioning, minimum production node sizing).
+
+## References
+
+- Repository: `EpykLab/turnkey` (Pulumi bootstrap + platform Helm chart).
+- Architecture source: internal journal “Moving to K8s” (Stellerbridge).

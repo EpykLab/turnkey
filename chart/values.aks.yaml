@@ -5,6 +5,21 @@ global:
 cilium:
   aksByoCni: false
 
+ingressNginx:
+  enabled: true
+  helmValues:
+    controller:
+      service:
+        type: LoadBalancer
+        annotations:
+          service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
+
+certManager:
+  enabled: true
+
+externalSecrets:
+  enabled: false
+
 caddyGateway:
   hostname: turnkey.gov.stellarbridge.app
 

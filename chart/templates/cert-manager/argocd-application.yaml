@@ -1,0 +1,37 @@
+{{- if .Values.certManager.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-cert-manager
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: {{ .Values.certManager.targetRevision | quote }}
+    helm:
+      releaseName: cert-manager
+      values: |
+        installCRDs: true
+        global:
+          leaderElection:
+            namespace: {{ .Values.certManager.namespace | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.certManager.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

@@ -7,14 +7,34 @@ cilium:
   enabled: false
   doksCompatibilityMode: true
 
+ingressNginx:
+  enabled: true
+
+certManager:
+  enabled: true
+
+# Controller only until ClusterSecretStore/SecretStore is GitOps'd; no backend required for install.
+externalSecrets:
+  enabled: true
+
 # Gateway API controller + TLS not installed in baseline smoke test.
 caddyGateway:
   enabled: false
   hostname: turnkey.stellarbridge.app
 
-# No Elastic endpoint in smoke clusters.
 otel:
-  enabled: false
+  enabled: true
+  devMode: true
 
 doppler:
+  enabled: true
   config: dev
+
+tekton:
+  enabled: true
+
+kargo:
+  enabled: true
+
+statusPage:
+  enabled: true

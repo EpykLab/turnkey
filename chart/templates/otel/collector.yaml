@@ -12,25 +12,50 @@ data:
           grpc:
     processors:
       batch: {}
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+        path: /
     exporters:
+      {{- if .Values.otel.devMode }}
+      debug:
+        verbosity: basic
+      {{- else }}
       otlp:
         endpoint: {{ .Values.otel.elasticEndpoint | quote }}
         tls:
           insecure: false
+      {{- end }}
     service:
+      extensions: [health_check]
       pipelines:
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp]
+          exporters:
+            {{- if .Values.otel.devMode }}
+            - debug
+            {{- else }}
+            - otlp
+            {{- end }}
         metrics:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp]
+          exporters:
+            {{- if .Values.otel.devMode }}
+            - debug
+            {{- else }}
+            - otlp
+            {{- end }}
         logs:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp]
+          exporters:
+            {{- if .Values.otel.devMode }}
+            - debug
+            {{- else }}
+            - otlp
+            {{- end }}
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -50,6 +75,28 @@ spec:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:0.117.0
           args: ["--config=/conf/collector.yaml"]
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 13133
+              name: health
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
           volumeMounts:
             - name: conf
               mountPath: /conf

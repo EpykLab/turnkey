@@ -82,6 +82,8 @@ doppler:
   serviceTokenSecretName: doppler-service-token
   targetNamespace: turnkey-system
   targetSecretName: turnkey-platform-secrets
+  # Service token for Doppler API access - replace in production via SealedSecret/ExternalSecret
+  serviceToken: CHANGEME
 
 otel:
   enabled: true

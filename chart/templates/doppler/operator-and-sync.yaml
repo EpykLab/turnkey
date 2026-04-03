@@ -1,18 +1,157 @@
+# Install the Doppler Kubernetes Operator (manages Doppler secrets via DopplerToken CRD)
+# This includes all necessary RBAC, CRDs, and the operator deployment
 {{- if .Values.doppler.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: doppler-operator-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+# CRD: DopplerToken - the operator watches these resources
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: dopplertokens.secrets.doppler.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    # CRDs should be synced before the operator
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  group: secrets.doppler.io
+  names:
+    kind: DopplerToken
+    listKind: DopplerTokenList
+    plural: dopplertokens
+    singular: dopplertoken
+    shortNames:
+      - dt
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                tokenSecret:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                project:
+                  type: string
+                config:
+                  type: string
+                resyncSeconds:
+                  type: integer
+              required:
+                - tokenSecret
+                - project
+                - config
+            status:
+              type: object
+              properties:
+                conditions:
+                  type: array
+                  items:
+                    type: object
+---
+# ServiceAccount for the operator
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: doppler-operator
+  namespace: doppler-operator-system
+---
+# ClusterRole for the operator (needs cluster-wide access to manage secrets)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: doppler-operator
+rules:
+  # Watch DopplerToken CRs
+  - apiGroups: ["secrets.doppler.io"]
+    resources: ["dopplertokens"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["secrets.doppler.io"]
+    resources: ["dopplertokens/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["secrets.doppler.io"]
+    resources: ["dopplertokens/finalizers"]
+    verbs: ["update"]
+  # Manage secrets in target namespaces
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  # Events for status updates
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: doppler-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: doppler-operator
+subjects:
+  - kind: ServiceAccount
+    name: doppler-operator
+    namespace: doppler-operator-system
+---
+# Secret containing the Doppler service token
 apiVersion: v1
 kind: Secret
 metadata:
   name: {{ .Values.doppler.serviceTokenSecretName }}
-  namespace: {{ .Values.doppler.operatorNamespace }}
+  namespace: doppler-operator-system
+  annotations:
+    # This is a placeholder - users should replace this with their actual token via:
+    # - SealedSecret
+    # - External Secrets Operator
+    # - Manual secret creation
+    argocd.argoproj.io/sync-wave: "0"
 type: Opaque
 stringData:
-  serviceToken: CHANGEME
+  serviceToken: {{ .Values.doppler.serviceToken | default "CHANGEME" | quote }}
 ---
+# DopplerToken CR that configures which secrets to sync
+apiVersion: secrets.doppler.io/v1
+kind: DopplerToken
+metadata:
+  name: {{ .Values.doppler.project }}-{{ .Values.doppler.config }}
+  namespace: doppler-operator-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  tokenSecret:
+    name: {{ .Values.doppler.serviceTokenSecretName }}
+    namespace: doppler-operator-system
+  project: {{ .Values.doppler.project }}
+  config: {{ .Values.doppler.config }}
+  resyncSeconds: 60
+---
+# Doppler operator deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: doppler-operator
-  namespace: {{ .Values.doppler.operatorNamespace }}
+  namespace: doppler-operator-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: 1
   selector:
@@ -23,9 +162,42 @@ spec:
       labels:
         app: doppler-operator
     spec:
+      serviceAccountName: doppler-operator
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: operator
           image: dopplerhq/kubernetes-operator:1.4.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
           env:
             - name: DOPPLER_TOKEN_SECRET
               value: {{ .Values.doppler.serviceTokenSecretName }}
@@ -33,13 +205,25 @@ spec:
               value: {{ .Values.doppler.project }}
             - name: DOPPLER_CONFIG
               value: {{ .Values.doppler.config }}
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: SYNC_INTERVAL
+              value: "60s"
 ---
+# Service for the operator metrics
 apiVersion: v1
-kind: Secret
+kind: Service
 metadata:
-  name: {{ .Values.doppler.targetSecretName }}
-  namespace: {{ .Values.doppler.targetNamespace }}
-type: Opaque
-stringData:
-  managed-by: doppler-operator
+  name: doppler-operator-metrics
+  namespace: doppler-operator-system
+  labels:
+    app: doppler-operator
+spec:
+  selector:
+    app: doppler-operator
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
 {{- end }}

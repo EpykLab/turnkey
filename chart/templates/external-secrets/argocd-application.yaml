@@ -34,4 +34,6 @@ spec:
         maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
+      # External Secrets CRDs are large and exceed annotation size limits
+      - ServerSideApply=true
 {{- end }}

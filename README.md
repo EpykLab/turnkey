@@ -149,6 +149,34 @@ Then open: `https://localhost:8443`
 
 ⚠️ **Warning:** This is a development-only password. Rotate via SealedSecret or ExternalSecret for production.
 
+## Extending the Platform
+
+### Additional Applications
+
+You can deploy custom Helm charts or Kubernetes manifests from external repositories alongside the platform baseline. Configure via Pulumi:
+
+```bash
+pulumi config set turnkey:additionalApps '[
+  {
+    "name": "home-pipelines",
+    "repoURL": "https://github.com/yourorg/home-repo",
+    "chart": "home",
+    "targetRevision": "main",
+    "namespace": "home",
+    "isHelm": true,
+    "valueFiles": ["values.yaml"]
+  }
+]'
+```
+
+**Use cases:**
+- Deploy your Tekton pipelines from a separate repo
+- Seed Kargo stages and promotions at build time
+- Include custom monitoring dashboards
+- Deploy team-specific applications
+
+See `docs/runbooks/additional-applications.md` for complete configuration options.
+
 ## Documentation
 
 - `docs/runbooks/bootstrap.md` - Full bootstrap procedure

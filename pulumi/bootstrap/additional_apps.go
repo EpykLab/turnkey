@@ -13,11 +13,11 @@ import (
 type AdditionalAppConfig struct {
 	Name           string                 `json:"name"`                 // Application name (e.g., "home-pipelines")
 	RepoURL        string                 `json:"repoURL"`              // Git repo or OCI registry URL
-	Chart          string                 `json:"chart"`                // Chart name (for Helm) or path (for Git)
+	Chart          string                 `json:"chart,omitempty"`      // Chart name (for Helm) - omit for plain manifests
 	TargetRevision string                 `json:"targetRevision"`       // Git branch/tag or chart version
 	Path           string                 `json:"path,omitempty"`       // Path within repo (for Git sources)
-	Namespace      string                 `json:"namespace"`            // Target namespace
-	IsHelm         bool                   `json:"isHelm"`               // true for Helm chart, false for plain manifests
+	Namespace      string                 `json:"namespace"`            // Target namespace (can be existing namespace like tekton-pipelines, kargo)
+	IsHelm         bool                   `json:"isHelm"`               // true for Helm chart, false for plain manifests/Kustomize
 	ValueFiles     []string               `json:"valueFiles,omitempty"` // Helm value files to use
 	HelmValues     map[string]interface{} `json:"helmValues,omitempty"` // Inline Helm values
 	SyncWave       string                 `json:"syncWave,omitempty"`   // ArgoCD sync wave annotation
@@ -68,6 +68,34 @@ func applyAdditionalApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, a
 		}
 	}
 
+	// Determine sync options based on target namespace
+	// If deploying to a platform namespace (tekton-pipelines, kargo, etc.),
+	// don't auto-create namespace since it already exists
+	platformNamespaces := map[string]bool{
+		"tekton-pipelines":           true,
+		"tekton-pipelines-resolvers": true,
+		"kargo":                      true,
+		"kargo-cluster-secrets":      true,
+		"kargo-shared-resources":     true,
+		"kargo-system-resources":     true,
+		"argocd":                     true,
+		"cert-manager":               true,
+		"kyverno":                    true,
+		"doppler-operator-system":    true,
+		"observability":              true,
+		"external-secrets":           true,
+		"ingress-nginx":              true,
+		"gateway-system":             true,
+	}
+
+	syncOptions := []string{}
+	if !platformNamespaces[app.Namespace] {
+		// Only auto-create namespace if it's not a platform namespace
+		syncOptions = append(syncOptions, "CreateNamespace=true")
+	}
+	// Add Replace=true for resource definitions that may already exist
+	syncOptions = append(syncOptions, "Replace=true")
+
 	// Create the Application
 	_, err := apiextensions.NewCustomResource(ctx, fmt.Sprintf("additional-app-%s", app.Name), &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("argoproj.io/v1alpha1"),
@@ -92,7 +120,7 @@ func applyAdditionalApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, a
 						"prune":    true,
 						"selfHeal": true,
 					},
-					"syncOptions": []string{"CreateNamespace=true"},
+					"syncOptions": syncOptions,
 					"retry": map[string]interface{}{
 						"limit": 15,
 						"backoff": map[string]interface{}{

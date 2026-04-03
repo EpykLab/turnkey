@@ -10,7 +10,7 @@ STACK="${STACK:-dev}"
 PULUMI_DIR="${ROOT}/pulumi"
 
 if [[ -z "${DIGITALOCEAN_TOKEN:-}" ]]; then
-	echo "ERROR: DIGITALOCEAN_TOKEN is not set and could not be read from ~/.config/doctl/config.yaml" >&2
+	echo "ERROR: No DigitalOcean token: run \`doctl auth init\` or export DIGITALOCEAN_TOKEN." >&2
 	exit 1
 fi
 

@@ -2,7 +2,8 @@
 # One-shot: provision DOKS + Argo bootstrap + wait for core sync gates (no prompts).
 # Run from your machine (not from a restricted CI sandbox): needs outbound access to api.digitalocean.com.
 #
-# Prerequisites: doctl configured OR export DIGITALOCEAN_TOKEN; pulumi logged in (pulumi whoami).
+# Prerequisites: `doctl auth init` (or export DIGITALOCEAN_TOKEN); pulumi logged in (pulumi whoami).
+# doctl is used for API checks and to supply the token Pulumi needs (via doctl auth token).
 # Optional: DOKS_K8S_VERSION=1.35.1-do.1 pulumi config is applied before up.
 #
 # Usage: ./scripts/deploy-doks.sh
@@ -17,12 +18,12 @@ STACK="${STACK:-dev}"
 PULUMI_DIR="${ROOT}/pulumi"
 
 if [[ -z "${DIGITALOCEAN_TOKEN:-}" ]]; then
-	echo "ERROR: DIGITALOCEAN_TOKEN is not set and could not be read from ~/.config/doctl/config.yaml" >&2
+	echo "ERROR: No DigitalOcean token: run \`doctl auth init\` or export DIGITALOCEAN_TOKEN." >&2
 	exit 1
 fi
 
 if command -v doctl >/dev/null 2>&1; then
-	echo "==> Verifying DigitalOcean API credentials"
+	echo "==> Verifying DigitalOcean API (doctl)"
 	doctl account get >/dev/null
 fi
 

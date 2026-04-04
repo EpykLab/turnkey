@@ -54,9 +54,17 @@ else
 	pulumi up --yes --skip-preview
 fi
 
+TMP_KUBECONFIG="$(mktemp)"
+trap 'rm -f "${TMP_KUBECONFIG}"' EXIT
+pulumi stack output kubeconfig --show-secrets >"${TMP_KUBECONFIG}"
+export KUBECONFIG="${TMP_KUBECONFIG}"
+
+echo "==> Point turnkey-platform at values.kind.yaml (local overlay)"
+kubectl apply -f "${ROOT}/bootstrap/platform-application.kind.yaml"
+
 echo ""
 echo "Next steps:"
-echo "  1. Commit and push chart/values.kind.yaml, bootstrap/platform-application.kind.yaml, and related changes."
-echo "  2. Point the turnkey-platform Application at values.kind.yaml (see docs/runbooks/kind-local.md)."
-echo "  3. For ingress smoke on the host: http://127.0.0.1:8080 (maps to NodePort 30080 when synced)."
+echo "  - Argo will sync the platform chart from Git; ensure master includes values.kind.yaml."
+echo "  - Ingress smoke on host: http://127.0.0.1:8080 (NodePort 30080 when ingress is synced)."
+echo "  - Optional: pulumi config set turnkey:additionalApps '[...]' for stllr-ci (see docs/runbooks/kind-local.md)."
 echo ""

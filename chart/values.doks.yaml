@@ -45,3 +45,35 @@ kargo:
 
 statusPage:
   enabled: true
+
+# CIS-style checks (same as kind overlay; interpret results on DOKS as closer to prod).
+kubeBench:
+  enabled: true
+
+# Optional chaos tooling; same defaults as kind (off until you enable).
+chaosMesh:
+  enabled: false
+  namespace: chaos-mesh
+  targetRevision: "2.7.3"
+  helmValues:
+    dashboard:
+      securityMode: false
+
+# Hello tiers (repeat full apps list: later value files replace the whole helloPlaceholder map in Helm).
+helloPlaceholder:
+  enabled: true
+  repoURL: ""
+  targetRevision: ""
+  apps:
+    - name: stllr-preview
+      path: deploy/hello-placeholder/overlays/preview
+      namespace: tenant-hello-preview
+      kargoAuthorizedStage: "stllr:preview"
+    - name: stllr-demo
+      path: deploy/hello-placeholder/overlays/demo
+      namespace: tenant-hello-demo
+      kargoAuthorizedStage: "stllr:demo"
+    - name: stllr-prod
+      path: deploy/hello-placeholder/overlays/prod
+      namespace: tenant-hello-prod
+      kargoAuthorizedStage: "stllr:prod"

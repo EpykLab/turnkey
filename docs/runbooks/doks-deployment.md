@@ -76,7 +76,7 @@ cluster:
 Edit `chart/values.doks.yaml` to enable/disable components:
 
 ```yaml
-# Currently enabled
+# Currently enabled (aligned with kind overlay where it makes sense)
 certManager:
   enabled: true
 
@@ -86,6 +86,15 @@ kargo:
 tekton:
   enabled: true
 
+helloPlaceholder:
+  enabled: true  # stllr-preview / stllr-demo / stllr-prod → deploy/hello-placeholder
+
+kubeBench:
+  enabled: true
+
+statusPage:
+  enabled: true  # LoadBalancer on DOKS (disabled on plain kind)
+
 # Currently disabled
 externalSecrets:
   enabled: false  # CRD size limits
@@ -93,6 +102,8 @@ cilium:
   enabled: false  # DOKS has its own CNI
 caddyGateway:
   enabled: false  # Not in baseline
+chaosMesh:
+  enabled: false
 ```
 
 ## Post-Deployment Access

@@ -153,7 +153,7 @@ If `stllr-ci` is private, use the same Git credential `Secret` pattern scoped to
 
 ## Troubleshooting
 
-- **LoadBalancer pending**: Expected on plain kind for `turnkey-status-page`. Use `kubectl port-forward -n turnkey-status svc/turnkey-status-page 8081:80` or add MetalLB.
+- **Status page**: Disabled in `values.kind.yaml` by default (LoadBalancer never becomes healthy on plain kind). Enable after MetalLB or switch the Service to NodePort in a forked manifest.
 - **Sync timeouts**: Reduce footprint (`tekton.enabled: false`, `kargo.enabled: false`, `kubeBench.enabled: false`) while debugging.
 - **`pulumi up` fails on kubeconfig**: Re-run `pulumi config set --secret turnkey:cluster.kubeconfig "$(kind get kubeconfig --name "$KIND_NAME")"` after recreating the cluster.
 

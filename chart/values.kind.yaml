@@ -42,9 +42,9 @@ tekton:
 kargo:
   enabled: true
 
-# LoadBalancer Services stay Pending on plain kind; the page still runs (use port-forward or MetalLB).
+# LoadBalancer external IP never settles on plain kind; Argo stays Progressing. Re-enable with MetalLB or port-forward-only smoke.
 statusPage:
-  enabled: true
+  enabled: false
 
 # CIS-style checks; many hostPath checks reflect node layout (kind nodes differ from production).
 kubeBench:

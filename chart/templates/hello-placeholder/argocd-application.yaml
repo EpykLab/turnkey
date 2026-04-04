@@ -1,0 +1,34 @@
+{{- if .Values.helloPlaceholder.enabled }}
+{{- range .Values.helloPlaceholder.apps }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name | quote }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+    kargo.akuity.io/authorized-stage: {{ .kargoAuthorizedStage | quote }}
+spec:
+  project: default
+  source:
+    repoURL: {{ $.Values.helloPlaceholder.repoURL | quote }}
+    targetRevision: {{ $.Values.helloPlaceholder.targetRevision | quote }}
+    path: {{ .path | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .namespace | quote }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
+{{- end }}

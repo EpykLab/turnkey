@@ -12,6 +12,10 @@ You can configure additional ArgoCD Applications via Pulumi config. These applic
 
 ## Quick Examples
 
+### Stellarbridge: `stllr-ci` (Kargo + Tekton)
+
+See `docs/runbooks/kind-local.md` for full context. Minimal pattern: two Git-directory applications (Kustomize), `syncWave` `44`–`45` so they apply after controllers (Turnkey platform wave `30`/`40`).
+
 ### Deploy Tekton Pipelines into Existing Namespace
 
 Deploy your Pipeline and Task definitions into the already-running Tekton:

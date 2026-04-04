@@ -58,3 +58,7 @@ chaosMesh:
   helmValues:
     dashboard:
       securityMode: false
+
+# Wire GitOps to stllr-infra hello manifests (push stllr-infra before syncing).
+helloPlaceholder:
+  enabled: true

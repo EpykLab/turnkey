@@ -70,12 +70,80 @@ Recommended rhythm:
 2. After each major add-on (ingress, policy, CI, chaos), re-run or wait for the scheduled job and record deltas.
 3. Document accepted exceptions in `docs/compliance-control-mapping.md` (or a linked evidence store) with rationale and compensating controls.
 
+## Hello placeholder (`stllr-infra`)
+
+Turnkey can deploy **three** Argo `Application`s — **`stllr-preview`**, **`stllr-demo`**, **`stllr-prod`** — that clone **`stllr-infra`** Kustomize overlays under `deploy/hello-placeholder/overlays/{preview,demo,prod}` into namespaces `tenant-hello-preview`, `tenant-hello-demo`, `tenant-hello-prod`. Each app is annotated for Kargo (`kargo.akuity.io/authorized-stage: "stllr:<tier>"`) to match `stllr-ci/kargo/stage-*.yaml`.
+
+1. Push **`stllr-infra`** first so the paths exist on the tracked revision.
+2. Push **`turnkey`** with the platform chart template and value overlay.
+3. If the infra repo is private, add an Argo repository `Secret` for `https://github.com/EpykLab/stllr-infra` (see above).
+
+Verify:
+
+```bash
+kubectl get applications.argoproj.io -n argocd | grep stllr-
+kubectl get pods -n tenant-hello-preview
+kubectl port-forward -n tenant-hello-preview svc/hello-placeholder 18080:80
+curl -sSf http://127.0.0.1:18080/ | head
+```
+
+Swap to `charts/stllr-tenant` later by changing `helloPlaceholder.apps` paths or replacing with Helm-based `additionalApps` entries.
+
+## Optional: sync `stllr-ci` (Kargo stages + Tekton pipelines)
+
+Turnkey already installs **controllers** from this repo (`deploy/tekton-*`). Day-2 **resource definitions** (your `Pipeline`s, `Stage`s, `Warehouse`) can live in **`EpykLab/stllr-ci`** and be applied by extra Argo `Application`s via Pulumi `turnkey:additionalApps` (applied at bootstrap; default sync wave `50`, override per app).
+
+Kargo only (smaller slice; edit `stage-*.yaml` placeholders for real `stllr-infra` + Argo app names first):
+
+```bash
+cd pulumi && pulumi stack select kind
+pulumi config set turnkey:additionalApps '[
+  {
+    "name": "stllr-ci-kargo",
+    "repoURL": "https://github.com/EpykLab/stllr-ci",
+    "targetRevision": "master",
+    "path": "kargo",
+    "namespace": "stllr",
+    "isHelm": false,
+    "syncWave": "45"
+  }
+]'
+cd .. && ./scripts/bootstrap-kind.sh
+```
+
+Add Tekton manifests (Kustomize in `stllr-ci/tekton/` pulls a remote Catalog `Task`; repo-server must reach GitHub):
+
+```bash
+pulumi config set turnkey:additionalApps '[
+  {
+    "name": "stllr-ci-kargo",
+    "repoURL": "https://github.com/EpykLab/stllr-ci",
+    "targetRevision": "master",
+    "path": "kargo",
+    "namespace": "stllr",
+    "isHelm": false,
+    "syncWave": "45"
+  },
+  {
+    "name": "stllr-ci-tekton",
+    "repoURL": "https://github.com/EpykLab/stllr-ci",
+    "targetRevision": "master",
+    "path": "tekton",
+    "namespace": "tekton-pipelines",
+    "isHelm": false,
+    "syncWave": "44"
+  }
+]'
+```
+
+If `stllr-ci` is private, use the same Git credential `Secret` pattern scoped to `https://github.com/EpykLab` (or the exact repo URL). After changing `additionalApps`, run **`pulumi up`** so Argo receives the new `Application` CRs.
+
 ## Mapping to migration success criteria
 
 | Criterion | kind iteration |
 |-----------|------------------|
 | Deploy Turnkey without intervention | `./scripts/bootstrap-kind.sh` + pushed Git revision + correct platform value files |
-| Seed Tekton / Kargo (and related) defs | `values.kind.yaml` enables Tekton and Kargo; pipeline YAML lives under `deploy/` |
+| Seed Tekton / Kargo (and related) defs | Controllers from Turnkey `deploy/`; definitions from **`stllr-ci`** via `additionalApps` (see above) |
 | Move release through stages / gated promotions | Requires Kargo + Git wiring to `stllr-infra`; validate CRDs and UI on kind; full gating on DOKS |
 | Preview apps + seeded data + Playwright | Needs tenant chart and data jobs; placeholder app acceptable on kind per team plan |
 | Tenant via Argo with seed values | Exercise with hello-world chart in `stllr-infra` if the real app secrets block boot |

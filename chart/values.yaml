@@ -106,3 +106,22 @@ chaosMesh:
   namespace: chaos-mesh
   targetRevision: "2.7.3"
   helmValues: {}
+
+# Optional: Argo CD Applications → stllr-infra hello-placeholder (Kustomize per tier). Kargo stages use these names.
+helloPlaceholder:
+  enabled: false
+  repoURL: https://github.com/EpykLab/stllr-infra
+  targetRevision: master
+  apps:
+    - name: stllr-preview
+      path: deploy/hello-placeholder/overlays/preview
+      namespace: tenant-hello-preview
+      kargoAuthorizedStage: "stllr:preview"
+    - name: stllr-demo
+      path: deploy/hello-placeholder/overlays/demo
+      namespace: tenant-hello-demo
+      kargoAuthorizedStage: "stllr:demo"
+    - name: stllr-prod
+      path: deploy/hello-placeholder/overlays/prod
+      namespace: tenant-hello-prod
+      kargoAuthorizedStage: "stllr:prod"

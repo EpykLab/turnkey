@@ -43,6 +43,7 @@ pulumi config set turnkey:cluster.env dev
 pulumi config set turnkey:argocd.repoUrl "${TURNKEY_ARGO_REPO_URL:-https://github.com/EpykLab/turnkey}"
 pulumi config set turnkey:argocd.targetRevision "${TURNKEY_ARGO_REVISION:-master}"
 pulumi config set turnkey:argocd.path bootstrap
+pulumi config set turnkey:platform.valueFiles '["values.yaml","values.kind.yaml"]'
 
 echo "==> Setting kubeconfig secret from kind"
 pulumi config set --secret turnkey:cluster.kubeconfig "$(kind get kubeconfig --name "${KIND_NAME}")"
@@ -54,17 +55,9 @@ else
 	pulumi up --yes --skip-preview
 fi
 
-TMP_KUBECONFIG="$(mktemp)"
-trap 'rm -f "${TMP_KUBECONFIG}"' EXIT
-pulumi stack output kubeconfig --show-secrets >"${TMP_KUBECONFIG}"
-export KUBECONFIG="${TMP_KUBECONFIG}"
-
-echo "==> Point turnkey-platform at values.kind.yaml (local overlay)"
-kubectl apply -f "${ROOT}/bootstrap/platform-application.kind.yaml"
-
 echo ""
 echo "Next steps:"
-echo "  - Argo will sync the platform chart from Git; ensure master includes values.kind.yaml."
+echo "  - turnkey-platform valueFiles come from Pulumi (kind: values.yaml + values.kind.yaml)."
 echo "  - Ingress smoke on host: http://127.0.0.1:18080 (NodePort 30080 when ingress is synced)."
 echo "  - Optional: pulumi config set turnkey:additionalApps '[...]' for stllr-ci (see docs/runbooks/kind-local.md)."
 echo ""

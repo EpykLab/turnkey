@@ -61,6 +61,10 @@ func main() {
 			return err
 		}
 
+		if err := bootstrap.ApplyPlatformApplication(ctx, k8sProvider, argocdRelease, cfg, repoURL, targetRevision); err != nil {
+			return err
+		}
+
 		// Apply any additional applications configured
 		if err := applyAdditionalApps(ctx, k8sProvider, argocdRelease, cfg); err != nil {
 			return err

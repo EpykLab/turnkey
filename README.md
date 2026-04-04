@@ -16,10 +16,10 @@ Turnkey is the platform baseline for provisioning and bootstrapping Kubernetes c
 1. `pulumi up` provisions provider infrastructure (AKS or DOKS) and obtains kubeconfig.
 2. Pulumi creates `argocd` namespace and installs Argo CD.
 3. Pulumi applies root Argo CD Application.
-4. Root app syncs `bootstrap/`, which declares the platform app.
-5. Platform app syncs the Helm chart from `chart/`.
+4. Root app syncs `bootstrap/` (marker ConfigMap only; `prune: false` on root so it does not delete the platform app).
+5. Pulumi creates the `turnkey-platform` Argo Application with stack-specific Helm `valueFiles` (`turnkey:platform.valueFiles` JSON array; default `values.yaml` + `values.doks.yaml`, kind uses `values.kind.yaml`).
 
-`bootstrap/platform-application.yaml` currently uses Helm `valueFiles` `values.yaml` + `values.doks.yaml` for DigitalOcean. For AKS, point `valueFiles` at `values.aks.yaml` instead (or add a second Application per environment).
+For AKS-only overlays, set `platform.valueFiles` to include `values.aks.yaml` (see `chart/values.aks.yaml`).
 
 ## Quick start (local kind)
 

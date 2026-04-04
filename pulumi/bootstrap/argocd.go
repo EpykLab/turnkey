@@ -66,7 +66,8 @@ func ApplyRootApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, argocdR
 				},
 				"syncPolicy": map[string]interface{}{
 					"automated": map[string]interface{}{
-						"prune":    true,
+						// Platform Application is managed by Pulumi (see ApplyPlatformApplication); do not prune it when Git bootstrap/ has no matching manifest.
+						"prune":    false,
 						"selfHeal": true,
 					},
 					"syncOptions": []string{"CreateNamespace=true"},

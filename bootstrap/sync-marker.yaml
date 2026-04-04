@@ -1,0 +1,10 @@
+# Bootstrap marker only: turnkey-root syncs this directory. The Argo CD Application
+# `turnkey-platform` is created by Pulumi (see pulumi/bootstrap/platform_application.go)
+# so valueFiles can differ per stack (DOKS vs kind) without Git selfHeal fighting kubectl patches.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: turnkey-bootstrap-sync-marker
+  namespace: argocd
+data:
+  managed-by: pulumi-platform-application

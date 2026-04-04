@@ -23,21 +23,19 @@ export TURNKEY_ARGO_REVISION=your-branch
 ./scripts/bootstrap-kind.sh
 ```
 
-## Point Argo at the kind Helm overlay
+## Kind Helm overlay (`values.kind.yaml`)
 
-The default `bootstrap/platform-application.yaml` uses `values.doks.yaml`. For kind, the platform Application must use `values.kind.yaml` (see `bootstrap/platform-application.kind.yaml`).
+The Argo CD Application **`turnkey-platform`** is created by **Pulumi** (`pulumi/bootstrap/platform_application.go`), not from Git, so GitOps selfHeal does not revert your overlay.
 
-After your changes are **pushed** to the revision Argo tracks, either:
-
-- Merge `platform-application.kind.yaml` into the tracked branch as the canonical `platform-application.yaml`, or
-- One-off apply from a machine with cluster admin:
+Set on the Pulumi stack (the bootstrap script does this automatically):
 
 ```bash
-export KUBECONFIG=... # from `pulumi stack output kubeconfig --show-secrets`
-kubectl apply -f bootstrap/platform-application.kind.yaml
+cd pulumi && pulumi stack select kind
+pulumi config set turnkey:platform.valueFiles '["values.yaml","values.kind.yaml"]'
+pulumi up --yes
 ```
 
-Argo reconciles the `turnkey-platform` Application in place; the next sync uses the kind value files.
+Default DOKS / dev stacks omit `platform.valueFiles` and use `values.yaml` + `values.doks.yaml`.
 
 ## Private Git / Helm credentials
 
@@ -83,8 +81,8 @@ Verify:
 ```bash
 kubectl get applications.argoproj.io -n argocd | grep stllr-
 kubectl get pods -n tenant-hello-preview
-kubectl port-forward -n tenant-hello-preview svc/hello-placeholder 18080:80
-curl -sSf http://127.0.0.1:18080/ | head
+kubectl port-forward -n tenant-hello-preview svc/hello-placeholder 28080:80
+curl -sSf http://127.0.0.1:28080/ | head
 ```
 
 Swap to `charts/stllr-tenant` later by changing `helloPlaceholder.apps` paths or replacing with Helm-based `additionalApps` entries.

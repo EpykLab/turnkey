@@ -9,9 +9,7 @@
 #   pulumi config set turnkey:argocd.path bootstrap
 #   pulumi config set --secret turnkey:cluster.kubeconfig "$(kind get kubeconfig --name turnkey)"
 #
-# Platform Helm overlay: bootstrap/platform-application.kind.yaml (values.yaml + values.kind.yaml).
-# After the first Argo sync from Git, either merge that Application spec into the default branch or
-# apply the kind manifest once so Argo uses the kind value files.
+# Platform chart overlays: Pulumi turnkey:platform.valueFiles (JSON array). Kind uses values.kind.yaml.
 config:
   cluster.provider: existing
   cluster.name: turnkey-kind
@@ -19,3 +17,4 @@ config:
   argocd.repoUrl: https://github.com/EpykLab/turnkey
   argocd.targetRevision: master
   argocd.path: bootstrap
+  platform.valueFiles: '["values.yaml","values.kind.yaml"]'

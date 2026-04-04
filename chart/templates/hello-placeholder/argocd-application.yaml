@@ -1,5 +1,5 @@
-{{- if .Values.helloPlaceholder.enabled }}
-{{- range .Values.helloPlaceholder.apps }}
+{{- if and .Values.helloPlaceholder .Values.helloPlaceholder.enabled }}
+{{- range (.Values.helloPlaceholder.apps | default list) }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -12,8 +12,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: {{ .Values.helloPlaceholder.repoURL | default .Values.argocd.repoUrl | quote }}
-    targetRevision: {{ .Values.helloPlaceholder.targetRevision | default .Values.argocd.targetRevision | quote }}
+    repoURL: {{ $.Values.helloPlaceholder.repoURL | default $.Values.argocd.repoUrl | quote }}
+    targetRevision: {{ $.Values.helloPlaceholder.targetRevision | default $.Values.argocd.targetRevision | quote }}
     path: {{ .path | quote }}
   destination:
     server: https://kubernetes.default.svc

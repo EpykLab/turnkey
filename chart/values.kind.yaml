@@ -59,6 +59,21 @@ chaosMesh:
     dashboard:
       securityMode: false
 
-# Wire GitOps to stllr-infra hello manifests (push stllr-infra before syncing).
+# Hello tiers on kind (must repeat apps here: later value file replaces the whole helloPlaceholder map in Helm).
 helloPlaceholder:
   enabled: true
+  repoURL: ""
+  targetRevision: ""
+  apps:
+    - name: stllr-preview
+      path: deploy/hello-placeholder/overlays/preview
+      namespace: tenant-hello-preview
+      kargoAuthorizedStage: "stllr:preview"
+    - name: stllr-demo
+      path: deploy/hello-placeholder/overlays/demo
+      namespace: tenant-hello-demo
+      kargoAuthorizedStage: "stllr:demo"
+    - name: stllr-prod
+      path: deploy/hello-placeholder/overlays/prod
+      namespace: tenant-hello-prod
+      kargoAuthorizedStage: "stllr:prod"

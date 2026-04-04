@@ -26,6 +26,9 @@ func ApplyPlatformApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, arg
 		Metadata: &metav1.ObjectMetaArgs{
 			Name:      pulumi.String("turnkey-platform"),
 			Namespace: pulumi.String("argocd"),
+			Labels: pulumi.StringMap{
+				"app.kubernetes.io/managed-by": pulumi.String("pulumi-turnkey"),
+			},
 		},
 		OtherFields: kubernetes.UntypedArgs{
 			"spec": map[string]interface{}{

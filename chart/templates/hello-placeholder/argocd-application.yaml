@@ -12,8 +12,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: {{ $.Values.helloPlaceholder.repoURL | quote }}
-    targetRevision: {{ $.Values.helloPlaceholder.targetRevision | quote }}
+    repoURL: {{ .Values.helloPlaceholder.repoURL | default .Values.argocd.repoUrl | quote }}
+    targetRevision: {{ .Values.helloPlaceholder.targetRevision | default .Values.argocd.targetRevision | quote }}
     path: {{ .path | quote }}
   destination:
     server: https://kubernetes.default.svc

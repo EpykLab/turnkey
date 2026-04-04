@@ -14,6 +14,8 @@ func NewProvider(ctx *pulumi.Context, kubeconfig pulumi.StringOutput) (*kubernet
 		Kubeconfig: kubeconfig,
 		// Allows destroy/refresh when the API server is gone (manual cluster delete, failed prior destroy).
 		DeleteUnreachable: pulumi.Bool(true),
+		// Argo CD's controller applies Application specs too; SSA field-manager conflicts break turnkey-platform adoption.
+		EnableServerSideApply: pulumi.Bool(false),
 	})
 }
 
@@ -78,6 +80,16 @@ func ApplyRootApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, argocdR
 							"factor":      2,
 							"maxDuration": "5m",
 						},
+					},
+				},
+				// turnkey-platform lives in-cluster from Pulumi, not in bootstrap/; suppress permanent OutOfSync on the root app.
+				"ignoreDifferences": []map[string]interface{}{
+					{
+						"group":             "argoproj.io",
+						"kind":              "Application",
+						"name":              "turnkey-platform",
+						"namespace":         "argocd",
+						"jqPathExpressions": []string{"."},
 					},
 				},
 			},

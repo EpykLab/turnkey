@@ -68,9 +68,11 @@ Recommended rhythm:
 2. After each major add-on (ingress, policy, CI, chaos), re-run or wait for the scheduled job and record deltas.
 3. Document accepted exceptions in `docs/compliance-control-mapping.md` (or a linked evidence store) with rationale and compensating controls.
 
-## Hello placeholder (`stllr-infra`)
+## Hello placeholder (Argo → turnkey Git mirror)
 
-Turnkey can deploy **three** Argo `Application`s — **`stllr-preview`**, **`stllr-demo`**, **`stllr-prod`** — that clone **`stllr-infra`** Kustomize overlays under `deploy/hello-placeholder/overlays/{preview,demo,prod}` into namespaces `tenant-hello-preview`, `tenant-hello-demo`, `tenant-hello-prod`. Each app is annotated for Kargo (`kargo.akuity.io/authorized-stage: "stllr:<tier>"`) to match `stllr-ci/kargo/stage-*.yaml`.
+Turnkey deploys **three** Argo `Application`s — **`stllr-preview`**, **`stllr-demo`**, **`stllr-prod`** — that sync Kustomize overlays under `deploy/hello-placeholder/overlays/{preview,demo,prod}` (same layout as `stllr-infra`). By default **`helloPlaceholder.repoURL`** is empty so Helm uses **`argocd.repoUrl`** (no extra Git credentials on a public turnkey repo).
+
+**Kargo** `Warehouse` / stages still point at **`stllr-infra`** for Freight; configure Git credentials on the Kargo `Project` when that repo is private. Keep the turnkey `deploy/hello-placeholder` tree aligned when you change `stllr-infra`.
 
 1. Push **`stllr-infra`** first so the paths exist on the tracked revision.
 2. Push **`turnkey`** with the platform chart template and value overlay.

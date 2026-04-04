@@ -107,11 +107,12 @@ chaosMesh:
   targetRevision: "2.7.3"
   helmValues: {}
 
-# Optional: Argo CD Applications → stllr-infra hello-placeholder (Kustomize per tier). Kargo stages use these names.
+# Optional: Argo CD Applications → hello-placeholder Kustomize (per tier). Empty repoURL/targetRevision → same Git as platform (turnkey).
+# Keep deploy/hello-placeholder in sync with stllr-infra when changing manifests; Kargo still uses stllr-infra for Freight.
 helloPlaceholder:
   enabled: false
-  repoURL: https://github.com/EpykLab/stllr-infra
-  targetRevision: master
+  repoURL: ""
+  targetRevision: ""
   apps:
     - name: stllr-preview
       path: deploy/hello-placeholder/overlays/preview

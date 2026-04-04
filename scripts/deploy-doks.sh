@@ -85,33 +85,37 @@ kubectl wait --for=condition=Available "deployment/argocd-server" -n argocd --ti
 
 echo "==> Waiting for all Applications to be healthy (up to 45m)"
 # Wait for ALL applications to be Synced and Healthy, not just turnkey-platform
+if ! command -v jq >/dev/null 2>&1; then
+	echo "ERROR: jq is required for application status polling (install jq)." >&2
+	exit 1
+fi
 deadline=$((SECONDS + 2700))
 while ((SECONDS < deadline)); do
-	# Get all apps and their status
-	all_apps=$(kubectl get applications.argoproj.io -n argocd --no-headers 2>/dev/null | wc -l)
-	synced_apps=$(kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null | grep -c '"sync": "Synced"' || echo "0")
-	healthy_apps=$(kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null | grep -c '"status": "Healthy"' || echo "0")
-	
+	apps_json="$(kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null || echo '{"items":[]}')"
+	all_apps=$(echo "${apps_json}" | jq '.items | length')
+	synced_apps=$(echo "${apps_json}" | jq '[.items[] | select(.status.sync.status == "Synced")] | length')
+	healthy_apps=$(echo "${apps_json}" | jq '[.items[] | select(.status.health.status == "Healthy")] | length')
+	# Synced but still Degraded is a steady failure; Degraded while OutOfSync often appears during install.
+	steady_degraded=$(echo "${apps_json}" | jq '[.items[] | select(.status.sync.status == "Synced" and .status.health.status == "Degraded")] | length')
+
 	# Progress report every 30 seconds (every 3 iterations since we sleep 10s)
 	if (( SECONDS % 30 < 10 )); then
 		echo "    apps: ${synced_apps}/${all_apps} synced, ${healthy_apps}/${all_apps} healthy ($(date +%H:%M:%S))"
 	fi
-	
+
 	# Success: all apps are both synced and healthy
-	if [[ $all_apps -gt 0 && $synced_apps -eq $all_apps && $healthy_apps -eq $all_apps ]]; then
+	if [[ "${all_apps}" -gt 0 && "${synced_apps}" -eq "${all_apps}" && "${healthy_apps}" -eq "${all_apps}" ]]; then
 		echo "==> All ${all_apps} applications synced and healthy!"
 		kubectl get applications.argoproj.io -n argocd -o wide || true
 		exit 0
 	fi
-	
-	# Check if any app is degraded (not just turnkey-platform)
-	degraded=$(kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null | grep '"status": "Degraded"' | wc -l || echo "0")
-	if [[ $degraded -gt 0 ]]; then
-		echo "ERROR: ${degraded} application(s) degraded. Check: kubectl get applications.argoproj.io -n argocd -o wide" >&2
+
+	if [[ "${steady_degraded}" -gt 0 ]]; then
+		echo "ERROR: ${steady_degraded} application(s) Synced but Degraded. Check: kubectl get applications.argoproj.io -n argocd -o wide" >&2
 		kubectl get applications.argoproj.io -n argocd -o wide || true
 		exit 1
 	fi
-	
+
 	sleep 10
 done
 

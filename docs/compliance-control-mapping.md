@@ -10,7 +10,7 @@ This document ties Turnkey platform controls to the security posture described i
 | Ingress | ingress-nginx (Argo-managed child app) | Aligns with the nginx ingress decision; not the Stellerbridge tenant chart. |
 | TLS issuance | cert-manager (Argo-managed child app) | Install only in this phase; ClusterIssuers (e.g. Cloudflare DNS-01) are operator-managed after CRDs are healthy. |
 | Secret sync to cluster | External Secrets Operator (optional, `externalSecrets.enabled`) | Disabled by default until Azure Key Vault / other backend is configured. |
-| CIS-style node/control-plane checks | kube-bench CronJob (`deploy/kube-bench`, `kubeBench.enabled`) | Use managed-cluster baselines for honest posture; kind results differ from DOKS/AKS. Namespace `turnkey-compliance` is excluded from baseline Pod/CronJob policies that conflict with hostPath/hostPID scans; document waived or accepted findings per environment. |
+| CIS-style node/control-plane checks | kube-bench CronJob (`deploy/kube-bench`, `kubeBench.enabled`) | Use managed-cluster baselines for honest posture; kind results differ from DOKS/AKS. Kyverno excludes `CronJob`/`Job` in `turnkey-compliance` from baseline Pod-oriented rules (hostPath/hostPID scans); document waived or accepted findings per environment. |
 
 ## FedRAMP / CMMC follow-ups
 

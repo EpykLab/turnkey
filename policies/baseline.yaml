@@ -31,7 +31,11 @@ spec:
                 - kargo-cluster-secrets
                 - kargo-shared-resources
                 - kargo-system-resources
-                # kube-bench needs hostPath/hostPID-style checks; not general workloads.
+          - resources:
+              kinds:
+                - CronJob
+                - Job
+              namespaces:
                 - turnkey-compliance
       validate:
         message: "Privileged containers are not allowed."
@@ -71,6 +75,11 @@ spec:
                 - kargo-cluster-secrets
                 - kargo-shared-resources
                 - kargo-system-resources
+          - resources:
+              kinds:
+                - CronJob
+                - Job
+              namespaces:
                 - turnkey-compliance
       validate:
         message: "CPU/memory requests and limits are required."
@@ -106,6 +115,11 @@ spec:
                 - kargo-cluster-secrets
                 - kargo-shared-resources
                 - kargo-system-resources
+          - resources:
+              kinds:
+                - CronJob
+                - Job
+              namespaces:
                 - turnkey-compliance
       validate:
         message: "readinessProbe and livenessProbe are required."

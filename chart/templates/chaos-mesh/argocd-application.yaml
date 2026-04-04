@@ -1,0 +1,35 @@
+{{- if .Values.chaosMesh.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-chaos-mesh
+  namespace: argocd
+  annotations:
+    # After cert-manager (Kargo webhook TLS) and core networking; before status page smoke.
+    argocd.argoproj.io/sync-wave: "38"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.chaos-mesh.org
+    chart: chaos-mesh
+    targetRevision: {{ .Values.chaosMesh.targetRevision | quote }}
+    helm:
+      releaseName: chaos-mesh
+      valuesObject:
+        {{- toYaml (.Values.chaosMesh.helmValues | default dict) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.chaosMesh.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

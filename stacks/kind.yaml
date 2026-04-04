@@ -1,0 +1,21 @@
+# Reference stack for local kind clusters (Pulumi provider: existing + kubeconfig secret).
+# Apply keys with your stack name, for example:
+#   pulumi stack init kind
+#   pulumi config set turnkey:cluster.provider existing
+#   pulumi config set turnkey:cluster.name turnkey-kind
+#   pulumi config set turnkey:cluster.env dev
+#   pulumi config set turnkey:argocd.repoUrl https://github.com/EpykLab/turnkey
+#   pulumi config set turnkey:argocd.targetRevision master
+#   pulumi config set turnkey:argocd.path bootstrap
+#   pulumi config set --secret turnkey:cluster.kubeconfig "$(kind get kubeconfig --name turnkey)"
+#
+# Platform Helm overlay: bootstrap/platform-application.kind.yaml (values.yaml + values.kind.yaml).
+# After the first Argo sync from Git, either merge that Application spec into the default branch or
+# apply the kind manifest once so Argo uses the kind value files.
+config:
+  cluster.provider: existing
+  cluster.name: turnkey-kind
+  cluster.env: dev
+  argocd.repoUrl: https://github.com/EpykLab/turnkey
+  argocd.targetRevision: master
+  argocd.path: bootstrap

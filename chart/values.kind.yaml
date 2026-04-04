@@ -1,0 +1,60 @@
+# Overlay for local kind clusters: no cloud LB, single node, ingress on NodePort.
+global:
+  provider: kind
+  environment: dev
+  clusterName: turnkey-kind
+
+cilium:
+  enabled: false
+
+ingressNginx:
+  enabled: true
+  helmValues:
+    controller:
+      admissionWebhooks:
+        enabled: false
+      service:
+        type: NodePort
+        nodePorts:
+          http: 30080
+          https: 30443
+
+certManager:
+  enabled: true
+
+externalSecrets:
+  enabled: false
+
+caddyGateway:
+  enabled: false
+
+otel:
+  enabled: true
+  devMode: true
+
+# Fewer moving parts locally; enable when you are exercising Doppler on kind.
+doppler:
+  enabled: false
+
+tekton:
+  enabled: true
+
+kargo:
+  enabled: true
+
+# LoadBalancer Services stay Pending on plain kind; the page still runs (use port-forward or MetalLB).
+statusPage:
+  enabled: true
+
+# CIS-style checks; many hostPath checks reflect node layout (kind nodes differ from production).
+kubeBench:
+  enabled: true
+
+# Optional chaos tooling; enable to validate wiring. Tune experiments in a later phase.
+chaosMesh:
+  enabled: false
+  namespace: chaos-mesh
+  targetRevision: "2.7.3"
+  helmValues:
+    dashboard:
+      securityMode: false

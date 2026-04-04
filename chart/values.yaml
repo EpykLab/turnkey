@@ -95,3 +95,14 @@ otel:
 # Public HTTP status page (LoadBalancer :80) synced last (Argo wave 100) after Kyverno + policies.
 statusPage:
   enabled: true
+
+# CIS-oriented checks (aquasecurity/kube-bench). Results are cluster/layout dependent; use for baselines and regression.
+kubeBench:
+  enabled: false
+
+# Chaos Mesh (optional). Enable for in-cluster chaos experiments after the control plane is stable.
+chaosMesh:
+  enabled: false
+  namespace: chaos-mesh
+  targetRevision: "2.7.3"
+  helmValues: {}

@@ -21,6 +21,10 @@ Turnkey is the platform baseline for provisioning and bootstrapping Kubernetes c
 
 `bootstrap/platform-application.yaml` currently uses Helm `valueFiles` `values.yaml` + `values.doks.yaml` for DigitalOcean. For AKS, point `valueFiles` at `values.aks.yaml` instead (or add a second Application per environment).
 
+## Quick start (local kind)
+
+For iterating on the platform chart and optional components without cloud cost, see [docs/runbooks/kind-local.md](docs/runbooks/kind-local.md) and run `./scripts/bootstrap-kind.sh` (Pulumi `cluster.provider=existing` + kind kubeconfig).
+
 ## Quick start (DigitalOcean Kubernetes)
 
 Prerequisites: `doctl auth init`, `pulumi login`, `DIGITALOCEAN_TOKEN` env var set (or use `doctl auth token`).

@@ -1,0 +1,30 @@
+{{- if .Values.kubeBench.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-kube-bench
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "85"
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.argocd.repoUrl | quote }}
+    targetRevision: {{ .Values.argocd.targetRevision | quote }}
+    path: deploy/kube-bench
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: turnkey-compliance
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

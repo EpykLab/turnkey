@@ -6,7 +6,7 @@ Provision a new Turnkey cluster from zero to Argo-managed steady state.
 
 ## Prerequisites
 
-- DigitalOcean account with API token
+- DigitalOcean account with API token (for DOKS; for local **kind**, see [kind-local.md](kind-local.md) instead)
 - `doctl` CLI authenticated (`doctl auth init`)
 - `pulumi` CLI installed and logged in (`pulumi login`)
 - `kubectl` installed
@@ -49,7 +49,7 @@ pulumi stack output kubeconfig --show-secrets > ~/.kube/turnkey-config
 export KUBECONFIG=~/.kube/turnkey-config
 
 # 4. Wait for ArgoCD
-cubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=300s
+kubectl wait --for=condition=Established crd/applications.argoproj.io --timeout=300s
 kubectl wait --for=condition=Available deployment/argocd-server -n argocd --timeout=600s
 
 # 5. Monitor applications until healthy

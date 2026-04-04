@@ -7,6 +7,7 @@ import (
 	"turnkey/pulumi/aks"
 	"turnkey/pulumi/bootstrap"
 	"turnkey/pulumi/doks"
+	"turnkey/pulumi/existing"
 
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -40,8 +41,10 @@ func main() {
 				return err
 			}
 			kubeconfig = kc
+		case "existing":
+			kubeconfig = existing.Provision(ctx, cfg)
 		default:
-			return fmt.Errorf("unsupported cluster.provider %q (must be aks or doks)", provider)
+			return fmt.Errorf("unsupported cluster.provider %q (must be aks, doks, or existing)", provider)
 		}
 
 		k8sProvider, err := bootstrap.NewProvider(ctx, kubeconfig)

@@ -13,7 +13,7 @@ Use this flow to iterate on Turnkey without DigitalOcean: install optional compo
 ./scripts/bootstrap-kind.sh
 ```
 
-The script creates `kind` cluster `turnkey` (override with `KIND_NAME`), applies `deploy/kind/kind-config.yaml` so **NodePort 30080** maps to **http://127.0.0.1:8080** on the host, selects Pulumi stack `kind` (or creates it), sets `turnkey:cluster.provider` to `existing`, and stores `kind get kubeconfig` as `turnkey:cluster.kubeconfig` (secret).
+The script creates `kind` cluster `turnkey` (override with `KIND_NAME`), applies `deploy/kind/kind-config.yaml` so **NodePort 30080** maps to **http://127.0.0.1:18080** on the host (avoids colliding with other tools on 8080), selects Pulumi stack `kind` (or creates it), sets `turnkey:cluster.provider` to `existing`, and stores `kind get kubeconfig` as `turnkey:cluster.kubeconfig` (secret).
 
 Override Git coordinates when you are testing a fork or branch:
 

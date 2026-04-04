@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create a kind cluster (optional config for ingress NodePort → localhost:8080) and run Pulumi against
+# Create a kind cluster (optional config for ingress NodePort → localhost:18080) and run Pulumi against
 # turnkey:cluster.provider=existing with kubeconfig stored as a stack secret.
 #
 # Prerequisites: kind, kubectl, pulumi, Go (for pulumi language host), docker.
@@ -65,6 +65,6 @@ kubectl apply -f "${ROOT}/bootstrap/platform-application.kind.yaml"
 echo ""
 echo "Next steps:"
 echo "  - Argo will sync the platform chart from Git; ensure master includes values.kind.yaml."
-echo "  - Ingress smoke on host: http://127.0.0.1:8080 (NodePort 30080 when ingress is synced)."
+echo "  - Ingress smoke on host: http://127.0.0.1:18080 (NodePort 30080 when ingress is synced)."
 echo "  - Optional: pulumi config set turnkey:additionalApps '[...]' for stllr-ci (see docs/runbooks/kind-local.md)."
 echo ""

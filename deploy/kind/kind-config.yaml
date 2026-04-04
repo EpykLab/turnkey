@@ -5,6 +5,7 @@ nodes:
   - role: control-plane
     extraPortMappings:
       - containerPort: 30080
-        hostPort: 8080
+        # Avoid colliding with local services on 8080 (common dev default).
+        hostPort: 18080
         listenAddress: 127.0.0.1
         protocol: TCP

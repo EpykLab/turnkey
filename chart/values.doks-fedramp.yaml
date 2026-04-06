@@ -1,0 +1,136 @@
+global:
+  provider: doks
+  environment: dev
+
+# DOKS ships with a working CNI; replacing it with Cilium is a separate hardening step.
+cilium:
+  enabled: false
+  doksCompatibilityMode: true
+
+ingressNginx:
+  enabled: true
+  helmValues:
+    controller:
+      admissionWebhooks:
+        enabled: false
+      service:
+        type: LoadBalancer
+
+certManager:
+  enabled: true
+
+# Controller only until ClusterSecretStore/SecretStore is GitOps'd; no backend required for install.
+# NOTE: Disabled due to CRD annotation size limit (262144 bytes) - re-enable when fixed
+externalSecrets:
+  enabled: false
+
+# Gateway API controller + TLS not installed in baseline smoke test.
+caddyGateway:
+  enabled: false
+  hostname: turnkey.stellarbridge.app
+
+otel:
+  enabled: true
+  devMode: true
+
+doppler:
+  enabled: true
+  config: dev
+
+tekton:
+  enabled: true
+
+kargo:
+  enabled: true
+
+statusPage:
+  enabled: true
+
+# CIS-style checks (same as kind overlay; interpret results on DOKS as closer to prod).
+kubeBench:
+  enabled: true
+
+# Optional chaos tooling; same defaults as kind (off until you enable).
+chaosMesh:
+  enabled: false
+  namespace: chaos-mesh
+  targetRevision: "2.7.3"
+  helmValues:
+    dashboard:
+      securityMode: false
+
+# Hello tiers (repeat full apps list: later value files replace the whole helloPlaceholder map in Helm).
+helloPlaceholder:
+  enabled: true
+  repoURL: ""
+  targetRevision: ""
+  apps:
+    - name: stllr-preview
+      path: deploy/hello-placeholder/overlays/preview
+      namespace: tenant-hello-preview
+      kargoAuthorizedStage: "stllr:preview"
+    - name: stllr-demo
+      path: deploy/hello-placeholder/overlays/demo
+      namespace: tenant-hello-demo
+      kargoAuthorizedStage: "stllr:demo"
+    - name: stllr-prod
+      path: deploy/hello-placeholder/overlays/prod
+      namespace: tenant-hello-prod
+      kargoAuthorizedStage: "stllr:prod"
+
+# ============================================================================
+# FedRAMP Security Controls - ALL ENABLED FOR TESTING
+# ============================================================================
+
+# FedRAMP AU-2/AU-9: Audit and Accountability
+# Vector log collection with S3 immutable storage and SIEM forwarding
+vector:
+  enabled: true
+  namespace: turnkey-compliance
+  targetRevision: "0.54.0"
+  s3:
+    enabled: false  # S3 requires actual bucket configuration
+    bucket: "fedramp-audit-logs"
+    region: "us-east-1"
+    prefix: "audit"
+    objectLock: true  # AU-9: Enable Object Lock for 7-year retention
+  siem:
+    enabled: false  # SIEM requires actual endpoint configuration
+    endpoint: ""  # SIEM endpoint (e.g., Splunk HEC, HTTP endpoint)
+    token: ""     # SIEM authentication token
+
+# FedRAMP SC-7: Boundary Protection  
+# NetworkPolicy enforcement for namespace isolation
+fedramp:
+  networkPolicies:
+    enabled: true  # Enable to deploy default-deny and exception policies
+  # SC-8 Transmission Confidentiality: Application-level mTLS as alternative
+  # (Linkerd with FIPS build would be preferred but requires pre-installation)
+  mtls:
+    enabled: false  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
+  # Application-level mTLS (alternative to service mesh)
+  appLevelMTLS:
+    enabled: true
+    issuerName: "fedramp-fips-ca"  # ClusterIssuer for service certificates
+  # Enforce FIPS 140-2 cipher suites via Kyverno policies
+  enforceFIPS:
+    enabled: true
+
+# FedRAMP SI-4: Information System Monitoring
+# Falco runtime security with custom FedRAMP rules
+falco:
+  enabled: true
+  namespace: turnkey-compliance
+  targetRevision: "4.20.0"
+  siem:
+    enabled: false  # SIEM forwarding requires actual endpoint
+    endpoint: ""  # Falcosidekick webhook endpoint
+
+# Linkerd Service Mesh with FIPS 140-2 (disabled - requires manual FIPS build install)
+# To enable: Install Linkerd FIPS build first, then enable here
+# https://linkerd.io/2.15/features/fips/
+linkerd:
+  enabled: false
+  namespace: linkerd
+  fips:
+    enabled: false  # Requires Linkerd FIPS build (BoringSSL-FIPS)

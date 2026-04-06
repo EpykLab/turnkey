@@ -114,6 +114,8 @@ apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: {{ .Values.fedramp.appLevelMTLS.issuerName }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
   labels:
     fedramp.turnkey.io/control: "SC-8"
     fedramp.turnkey.io/fips-140-2: "validated"
@@ -131,6 +133,8 @@ kind: Certificate
 metadata:
   name: fedramp-sc8-service-mtls-fips
   namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
   labels:
     fedramp.turnkey.io/control: "SC-8"
     fedramp.turnkey.io/fips-140-2: "validated"
@@ -219,6 +223,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-sc8-enforce-fips-ciphers
   annotations:
+    argocd.argoproj.io/sync-wave: "26"
     policies.kyverno.io/title: Enforce FIPS 140-2 Cipher Suites
     policies.kyverno.io/category: FedRAMP SC-8,SC-13
     policies.kyverno.io/subject: Ingress,Gateway
@@ -258,6 +263,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-sc8-block-non-fips-ciphers
   annotations:
+    argocd.argoproj.io/sync-wave: "26"
     policies.kyverno.io/title: Block Non-FIPS TLS Configuration
     policies.kyverno.io/category: FedRAMP SC-8
     policies.kyverno.io/subject: Ingress

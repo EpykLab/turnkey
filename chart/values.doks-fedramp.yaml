@@ -109,12 +109,14 @@ fedramp:
   mtls:
     enabled: false  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
   # Application-level mTLS (alternative to service mesh)
+  # NOTE: Disabled for initial deployment - requires cert-manager CRDs to be installed first
   appLevelMTLS:
-    enabled: true
+    enabled: false
     issuerName: "fedramp-fips-ca"  # ClusterIssuer for service certificates
   # Enforce FIPS 140-2 cipher suites via Kyverno policies
+  # NOTE: Disabled for initial deployment - requires kyverno CRDs to be installed first
   enforceFIPS:
-    enabled: true
+    enabled: false
 
 # FedRAMP SI-4: Information System Monitoring
 # Falco runtime security with custom FedRAMP rules

@@ -116,6 +116,7 @@ metadata:
   name: {{ .Values.fedramp.appLevelMTLS.issuerName }}
   annotations:
     argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     fedramp.turnkey.io/control: "SC-8"
     fedramp.turnkey.io/fips-140-2: "validated"
@@ -135,6 +136,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     fedramp.turnkey.io/control: "SC-8"
     fedramp.turnkey.io/fips-140-2: "validated"
@@ -224,6 +226,7 @@ metadata:
   name: fedramp-sc8-enforce-fips-ciphers
   annotations:
     argocd.argoproj.io/sync-wave: "26"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     policies.kyverno.io/title: Enforce FIPS 140-2 Cipher Suites
     policies.kyverno.io/category: FedRAMP SC-8,SC-13
     policies.kyverno.io/subject: Ingress,Gateway
@@ -264,6 +267,7 @@ metadata:
   name: fedramp-sc8-block-non-fips-ciphers
   annotations:
     argocd.argoproj.io/sync-wave: "26"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     policies.kyverno.io/title: Block Non-FIPS TLS Configuration
     policies.kyverno.io/category: FedRAMP SC-8
     policies.kyverno.io/subject: Ingress

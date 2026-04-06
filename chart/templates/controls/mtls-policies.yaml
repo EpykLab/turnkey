@@ -243,7 +243,7 @@ spec:
         deny:
           conditions:
             any:
-              - key: "{{ request.object.metadata.annotations.\"nginx.ingress.kubernetes.io/ssl-ciphers\" }}"
+              - key: "{{ "{{ request.object.metadata.annotations.\\"nginx.ingress.kubernetes.io/ssl-ciphers\\" }}" }}"
                 operator: AnyIn
                 value:
                   - "*CHACHA*"
@@ -280,7 +280,7 @@ spec:
         deny:
           conditions:
             any:
-              - key: "{{ request.object.metadata.annotations.\"nginx.ingress.kubernetes.io/ssl-protocols\" }}"
+              - key: "{{ "{{ request.object.metadata.annotations.\\"nginx.ingress.kubernetes.io/ssl-protocols\\" }}" }}"
                 operator: AnyIn
                 value:
                   - "TLSv1"

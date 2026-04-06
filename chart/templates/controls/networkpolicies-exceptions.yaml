@@ -1,0 +1,152 @@
+# FedRAMP SC-7(3): Access Point Restrictions
+# Allow specific ingress from approved sources
+{{- if .Values.fedramp.networkPolicies.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-allow-ingress-nginx
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    fedramp.turnkey.io/control: "SC-7(3)"
+    fedramp.turnkey.io/description: "Allow ingress from nginx ingress controller"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: "stllr"
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from nginx ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8443
+    # Allow from same namespace
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8443
+---
+# SC-7(4): External Connections
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-allow-egress-external
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    fedramp.turnkey.io/control: "SC-7(4)"
+    fedramp.turnkey.io/description: "Allow egress to approved external endpoints"
+spec:
+  podSelector:
+    matchLabels:
+      fedramp.turnkey.io/external-access: "approved"
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow HTTPS to external (requires explicit host allowlisting at egress)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow HTTP to external (only for specific approved services)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 80
+---
+# SC-7(5): Deny by Default, Allow by Exception
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-allow-internal-communication
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    fedramp.turnkey.io/control: "SC-7(5)"
+    fedramp.turnkey.io/description: "Allow internal namespace communication"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from same namespace
+    - from:
+        - podSelector: {}
+    # Allow from platform namespaces
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: turnkey-compliance
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+  egress:
+    # Allow to same namespace
+    - to:
+        - podSelector: {}
+    # Allow to platform namespaces
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: turnkey-compliance
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# SC-7(7): Split Tunneling Prevention
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-prevent-split-tunnel
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    fedramp.turnkey.io/control: "SC-7(7)"
+    fedramp.turnkey.io/description: "Prevent unauthorized tunneling"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: "stllr"
+  policyTypes:
+    - Egress
+  egress:
+    # Block common tunnel ports unless explicitly allowed
+    # This policy is layered - it doesn't explicitly allow, but acts as documentation
+    # Actual blocking happens via default-deny and explicit allows
+    - to:
+        - podSelector: {}
+      ports:
+        # Only allow specific ports, block others via default-deny
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8443
+        - protocol: TCP
+          port: 443
+{{- end }}

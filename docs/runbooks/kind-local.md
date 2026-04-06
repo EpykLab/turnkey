@@ -68,15 +68,23 @@ Recommended rhythm:
 2. After each major add-on (ingress, policy, CI, chaos), re-run or wait for the scheduled job and record deltas.
 3. Document accepted exceptions in `docs/compliance-control-mapping.md` (or a linked evidence store) with rationale and compensating controls.
 
-## Hello placeholder (Argo → turnkey Git mirror)
+## Hello placeholder (Argo → stllr-infra charts)
 
-Turnkey deploys **three** Argo `Application`s — **`stllr-preview`**, **`stllr-demo`**, **`stllr-prod`** — that sync Kustomize overlays under `deploy/hello-placeholder/overlays/{preview,demo,prod}` (same layout as `stllr-infra`). By default **`helloPlaceholder.repoURL`** is empty so Helm uses **`argocd.repoUrl`** (no extra Git credentials on a public turnkey repo).
+Turnkey can deploy applications directly from your infrastructure repository (`stllr-infra`). You can configure **Kargo-managed apps** (with promotion stages) alongside **standard ArgoCD apps** (for cluster state) via the `helloPlaceholder` feature.
 
-**Kargo** `Warehouse` / stages still point at **`stllr-infra`** for Freight; configure Git credentials on the Kargo `Project` when that repo is private. Keep the turnkey `deploy/hello-placeholder` tree aligned when you change `stllr-infra`.
+**Key capabilities:**
+- Deploy charts from `stllr-infra` instead of mirroring in turnkey
+- Mix Kargo-managed apps (main application stages) with standard ArgoCD apps (cluster config)
+- Configure via Helm values in your stack file
 
+**Kargo** `Warehouse` / stages point at **`stllr-infra`** for Freight; configure Git credentials on the Kargo `Project` when that repo is private. Apps with `kargoAuthorizedStage` are managed by Kargo, apps without are standard ArgoCD.
+
+Quick setup:
 1. Push **`stllr-infra`** first so the paths exist on the tracked revision.
-2. Push **`turnkey`** with the platform chart template and value overlay.
+2. Configure `helloPlaceholder` in your stack config to point at stllr-infra charts.
 3. If the infra repo is private, add an Argo repository `Secret` for `https://github.com/EpykLab/stllr-infra` (see above).
+
+See **`docs/runbooks/stllr-infra-apps.md`** for complete configuration examples and field reference.
 
 Verify:
 

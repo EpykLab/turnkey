@@ -377,6 +377,7 @@ pulumi config get turnkey:additionalApps
 
 - `bootstrap.md` - Platform bootstrap process
 - `doks-deployment.md` - DOKS-specific deployment
+- `stllr-infra-apps.md` - Deploying from stllr-infra with Kargo and standard ArgoCD
 - ArgoCD Application docs: https://argo-cd.readthedocs.io/en/stable/core_concepts/
 - Tekton docs: https://tekton.dev/docs/
 - Kargo docs: https://kargo.akuity.io/

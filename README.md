@@ -155,6 +155,76 @@ Then open: `https://localhost:8443`
 
 ⚠️ **Warning:** This is a development-only password. Rotate via SealedSecret or ExternalSecret for production.
 
+## FedRAMP Security Controls
+
+Turnkey includes implementations for FedRAMP security controls (NIST SP 800-53 Rev 5):
+
+| Control | Description | Implementation | Enable |
+|---------|-------------|----------------|--------|
+| **AU-2/AU-9** | Audit Events & Protection | Vector log collection → S3 Object Lock | `vector.enabled: true` |
+| **AC-2** | Account Management | Kyverno policies for ServiceAccount lifecycle | Auto-enabled with Kyverno |
+| **SC-7** | Boundary Protection | NetworkPolicies (default deny) | `fedramp.networkPolicies.enabled: true` |
+| **SC-8** | Transmission Encryption | Linkerd FIPS mTLS (recommended) | See below |
+| **SI-4** | System Monitoring | Falco runtime security | `falco.enabled: true` |
+
+### SC-8: FIPS 140-2 Validated mTLS (⚠️ Important)
+
+FedRAMP requires **FIPS 140-2 validated cryptography**. **WireGuard is NOT acceptable** (uses ChaCha20-Poly1305 which is not FIPS validated).
+
+**RECOMMENDED: Linkerd with FIPS Build**
+
+```yaml
+# 1. First, install Linkerd FIPS build
+# https://linkerd.io/2.15/features/fips/
+linkerd install --set proxy.image.version=<fips-tag> | kubectl apply -f -
+
+# 2. Enable in turnkey values.yaml
+linkerd:
+  enabled: true
+  fips:
+    enabled: true
+
+fedramp:
+  mtls:
+    enabled: true
+```
+
+**Why Linkerd?**
+- ✅ **Lightweight**: Rust-based proxies, ~1ms overhead (vs Istio's ~5-10ms)
+- ✅ **Simple**: Easier to operate and audit for FedRAMP
+- ✅ **Purpose-built**: mTLS is the primary use case
+- ✅ **FIPS validated**: Uses BoringSSL-FIPS (Certificate #2964)
+
+**Alternative: Application-Level mTLS**
+If you cannot deploy a service mesh, use cert-manager with FIPS-compliant certificates per-application (harder to manage but no sidecars).
+
+**NOT RECOMMENDED: Istio**
+We do not recommend Istio for turnkey unless you need advanced features like traffic splitting or WASM filters. Istio's complexity makes FedRAMP compliance significantly harder.
+       enabled: true
+   ```
+
+2. **Istio with FIPS mode** (Full-featured)
+   ```yaml
+   istio:
+     enabled: true
+     fips:
+       enabled: true
+   fedramp:
+     mtls:
+       mode: "istio"
+       enabled: true
+   ```
+
+3. **Application-level mTLS** (cert-manager + FIPS libraries)
+   ```yaml
+   fedramp:
+     appLevelMTLS:
+       enabled: true
+       issuerName: "fedramp-fips-ca"
+   ```
+
+See [docs/compliance-control-mapping.md](docs/compliance-control-mapping.md) for complete FedRAMP implementation details.
+
 ## Extending the Platform
 
 ### Additional Applications

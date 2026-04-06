@@ -57,6 +57,29 @@ cilium:
   kubeProxyReplacement: true
   hubble:
     enabled: true
+  # Note: WireGuard is NOT FIPS 140-2 validated (uses ChaCha20)
+  # For FedRAMP SC-8, use Linkerd instead (see below)
+
+# FedRAMP SC-8 FIPS 140-2: Linkerd Service Mesh (mTLS)
+# RECOMMENDED: Lightweight, automatic mTLS with FIPS 140-2 validated crypto
+# Install FIPS build: https://linkerd.io/2.15/features/fips/
+# Architecture: Rust-based sidecar proxies (~1ms overhead vs Istio's ~5-10ms)
+linkerd:
+  enabled: false
+  namespace: linkerd
+  fips:
+    enabled: false  # Requires Linkerd FIPS build (BoringSSL-FIPS)
+
+# FedRAMP Alternative: Istio (only if you need advanced traffic management)
+# NOT RECOMMENDED for turnkey: Heavy Envoy sidecars, complex operation
+# Use only if you need: Traffic splitting, authz policies, external auth, WASM filters
+istio:
+  enabled: false
+  namespace: istio-system
+  rootNamespace: istio-system
+  ingressNamespace: istio-ingress
+  fips:
+    enabled: false  # Requires Istio distroless-fips build
 
 caddyGateway:
   enabled: true
@@ -107,22 +130,92 @@ chaosMesh:
   targetRevision: "2.7.3"
   helmValues: {}
 
-# Optional: Argo CD Applications → hello-placeholder Kustomize (per tier). Empty repoURL/targetRevision → same Git as platform (turnkey).
-# Keep deploy/hello-placeholder in sync with stllr-infra when changing manifests; Kargo still uses stllr-infra for Freight.
+# ============================================================================
+# FedRAMP Security Controls
+# ============================================================================
+
+# FedRAMP AU-2/AU-9: Audit and Accountability
+# Vector log collection with S3 immutable storage and SIEM forwarding
+vector:
+  enabled: false
+  namespace: turnkey-compliance
+  targetRevision: "0.54.0"
+  s3:
+    enabled: false
+    bucket: "fedramp-audit-logs"
+    region: "us-east-1"
+    prefix: "audit"
+    objectLock: true  # AU-9: Enable Object Lock for 7-year retention
+  siem:
+    enabled: false
+    endpoint: ""  # SIEM endpoint (e.g., Splunk HEC, HTTP endpoint)
+    token: ""     # SIEM authentication token
+
+# FedRAMP SC-7: Boundary Protection  
+# NetworkPolicy enforcement for namespace isolation
+fedramp:
+  networkPolicies:
+    enabled: false  # Enable to deploy default-deny and exception policies
+  # SC-8 Transmission Confidentiality: RECOMMENDED - Linkerd with FIPS build
+  # Uses BoringSSL-FIPS (Certificate #2964) for automatic pod-to-pod mTLS
+  # Install FIPS build: https://linkerd.io/2.15/features/fips/
+  # Alternative: Application-level mTLS (see appLevelMTLS below)
+  mtls:
+    enabled: false  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
+  # Application-level mTLS (alternative to service mesh)
+  # Use cert-manager to issue FIPS-compliant certificates per-app
+  # Harder to manage but no sidecar overhead
+  appLevelMTLS:
+    enabled: false
+    issuerName: "fedramp-fips-ca"  # ClusterIssuer for service certificates
+  # Enforce FIPS 140-2 cipher suites via Kyverno policies
+  enforceFIPS:
+    enabled: false
+
+# FedRAMP SI-4: Information System Monitoring
+# Falco runtime security with custom FedRAMP rules
+falco:
+  enabled: false
+  namespace: turnkey-compliance
+  targetRevision: "4.20.0"
+  siem:
+    enabled: false
+    endpoint: ""  # Falcosidekick webhook endpoint
+
+# ============================================================================
+# Optional: Argo CD Applications from external repo (e.g., stllr-infra charts).
+# Supports both Kargo-managed apps (with kargoAuthorizedStage) and standard ArgoCD apps.
+# Set repoURL to stllr-infra to deploy charts from that repo.
+# Keep paths in sync with stllr-infra when changing manifests.
 helloPlaceholder:
   enabled: false
-  repoURL: ""
+  repoURL: ""  # Set to "https://github.com/EpykLab/stllr-infra" to pull from infra repo
   targetRevision: ""
   apps:
-    - name: stllr-preview
-      path: deploy/hello-placeholder/overlays/preview
-      namespace: tenant-hello-preview
+    # Example: Main app managed by Kargo (has kargoAuthorizedStage)
+    - name: stllr-app-preview
+      path: charts/stllr-app/overlays/preview
+      namespace: stllr-preview
       kargoAuthorizedStage: "stllr:preview"
-    - name: stllr-demo
-      path: deploy/hello-placeholder/overlays/demo
-      namespace: tenant-hello-demo
+      syncWave: "55"
+    - name: stllr-app-demo
+      path: charts/stllr-app/overlays/demo
+      namespace: stllr-demo
       kargoAuthorizedStage: "stllr:demo"
-    - name: stllr-prod
-      path: deploy/hello-placeholder/overlays/prod
-      namespace: tenant-hello-prod
+      syncWave: "55"
+    - name: stllr-app-prod
+      path: charts/stllr-app/overlays/prod
+      namespace: stllr-prod
       kargoAuthorizedStage: "stllr:prod"
+      syncWave: "55"
+    # Example: Standard ArgoCD apps (no Kargo stage) for cluster state/config
+    - name: cluster-config
+      path: charts/cluster-config/base
+      namespace: kube-system
+      syncWave: "56"  # After main apps
+      project: default
+    - name: monitoring-rules
+      path: charts/monitoring/rules
+      namespace: observability
+      syncWave: "57"
+      project: default

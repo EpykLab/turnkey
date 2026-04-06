@@ -1,0 +1,218 @@
+# FedRAMP SI-4: Information System Monitoring
+# Falco custom rules for runtime security detection
+# This is mounted as a ConfigMap for Falco to consume
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-fedramp-si4-rules
+  namespace: turnkey-compliance
+  labels:
+    app.kubernetes.io/name: falco
+    app.kubernetes.io/component: runtime-security
+    fedramp.turnkey.io/control: "SI-4"
+data:
+  fedramp-si4-rules.yaml: |
+    # FedRAMP SI-4: Information System Monitoring
+    # Falco rules for detecting security incidents in real-time
+    
+    # SI-4(2): Automated tools for real-time analysis
+    # Detect unauthorized processes
+    - rule: SI4_Unauthorized_Process_Launched
+      desc: SI-4(2): Detect processes not in approved baseline
+      condition: >
+        spawned_process and
+        not proc.name in (approved_processes)
+      output: >
+        SI-4 ALERT: Unauthorized process detected
+        (user=%user.name process=%proc.name
+        parent=%proc.pname cmdline=%proc.cmdline
+        container=%container.name image=%container.image.repository
+        k8s.ns=%k8s.ns.name k8s.pod=%k8s.pod.name)
+      priority: CRITICAL
+      tags: [si-4, process, security]
+
+    # SI-4(2): Detect privilege escalation attempts
+    - rule: SI4_Privilege_Escalation_Attempt
+      desc: SI-4(2): Detect attempts to escalate privileges
+      condition: >
+        spawned_process and
+        (proc.name in (sudo, su, setuid, setgid, pkexec) or
+         (proc.name = chmod and (fd.name contains "suid" or fd.name contains "sgid")))
+      output: >
+        SI-4 ALERT: Privilege escalation attempt
+        (user=%user.name process=%proc.name
+        parent=%proc.pname cmdline=%proc.cmdline
+        container=%container.name k8s.ns=%k8s.ns.name)
+      priority: CRITICAL
+      tags: [si-4, privilege_escalation, security]
+
+    # SI-4(4): Monitoring inbound/outbound communications
+    - rule: SI4_Suspicious_Inbound_Connection
+      desc: SI-4(4): Monitor for suspicious inbound connections
+      condition: >
+        inbound and
+        fd.type = ipv4 and
+        (fd.sport < 1024 or fd.sport in (1433, 1521, 3306, 5432, 27017, 6379, 11211, 9200))
+      output: >
+        SI-4 ALERT: Suspicious inbound connection
+        (connection=%fd.name user=%user.name
+        process=%proc.name cmdline=%proc.cmdline
+        container=%container.name k8s.ns=%k8s.ns.name)
+      priority: WARNING
+      tags: [si-4, network, inbound, security]
+
+    # SI-4(4): Monitor outbound connections to suspicious destinations
+    - rule: SI4_Suspicious_Outbound_Connection
+      desc: SI-4(4): Monitor for suspicious outbound connections
+      condition: >
+        outbound and
+        fd.type = ipv4 and
+        (fd.rport in (22, 23, 25, 1433, 1521, 3306, 3389, 5432, 5900, 6379))
+      output: >
+        SI-4 ALERT: Suspicious outbound connection
+        (connection=%fd.name user=%user.name
+        process=%proc.name cmdline=%proc.cmdline
+        container=%container.name k8s.ns=%k8s.ns.name)
+      priority: WARNING
+      tags: [si-4, network, outbound, security]
+
+    # SI-4(5): System-generated alerts
+    - rule: SI4_Sensitive_File_Access
+      desc: SI-4(5): Monitor access to sensitive configuration files
+      condition: >
+        open_read and
+        (fd.name in (/etc/shadow, /etc/passwd, /etc/gshadow,
+                     /etc/kubernetes/pki/ca.crt,
+                     /etc/kubernetes/pki/ca.key,
+                     /etc/kubernetes/pki/apiserver.key,
+                     /var/lib/kubelet/config.yaml,
+                     /var/lib/kubelet/pki/kubelet-client.key) or
+         fd.name contains "/etc/kubernetes/pki/" or
+         fd.name contains "/var/lib/kubelet/pki/")
+      output: >
+        SI-4 ALERT: Sensitive file accessed
+        (user=%user.name file=%fd.name
+        process=%proc.name cmdline=%proc.cmdline
+        container=%container.name k8s.ns=%k8s.ns.name)
+      priority: WARNING
+      tags: [si-4, file_access, sensitive, security]
+
+    # SI-4(5): Monitor access to secrets
+    - rule: SI4_Kubernetes_Secret_Access
+      desc: SI-4(5): Monitor access to Kubernetes secrets
+      condition: >
+        open_read and
+        fd.name contains "/var/run/secrets/kubernetes.io/serviceaccount"
+      output: >
+        SI-4 ALERT: ServiceAccount token accessed
+        (user=%user.name file=%fd.name
+        process=%proc.name cmdline=%proc.cmdline
+        container=%container.name k8s.ns=%k8s.ns.name
+        k8s.sa=%k8s.pod.serviceaccount)
+      priority: NOTICE
+      tags: [si-4, secrets, kubernetes, security]
+
+    # SI-4(11): Intrusion detection - container escapes
+    - rule: SI4_Container_Escape_Attempt
+      desc: SI-4(11): Detect potential container escape attempts
+      condition: >
+        spawned_process and
+        (proc.name in (runc, runsc, crun) or
+         (proc.cmdline contains "nsenter" and proc.cmdline contains "1") or
+         (proc.cmdline contains "/proc/self/exe" and proc.cmdline contains "/host"))
+      output: >
+        SI-4 ALERT: Potential container escape attempt
+        (user=%user.name process=%proc.name
+        cmdline=%proc.cmdline container=%container.name
+        k8s.ns=%k8s.ns.name k8s.pod=%k8s.pod.name)
+      priority: CRITICAL
+      tags: [si-4, container_escape, security]
+
+    # SI-4(11): Detect crypto mining
+    - rule: SI4_Crypto_Mining_Detection
+      desc: SI-4(11): Detect potential cryptocurrency mining
+      condition: >
+        spawned_process and
+        (proc.name in (xmrig, minerd, stratum, ethminer) or
+         proc.cmdline contains "stratum+tcp" or
+         proc.cmdline contains "stratum+ssl" or
+         proc.cmdline contains "--donate-level" or
+         proc.cmdline contains "nicehash")
+      output: >
+        SI-4 ALERT: Potential crypto mining detected
+        (user=%user.name process=%proc.name
+        cmdline=%proc.cmdline container=%container.name
+        k8s.ns=%k8s.ns.name k8s.pod=%k8s.pod.name)
+      priority: CRITICAL
+      tags: [si-4, crypto_mining, intrusion, security]
+
+    # SI-4(14): Wireless access point detection (in containers)
+    - rule: SI4_Wireless_Interface_Created
+      desc: SI-4(14): Detect wireless interface creation
+      condition: >
+        spawned_process and
+        (proc.name in (iw, iwconfig, ip) and
+         (proc.cmdline contains "wlan" or proc.cmdline contains "mon"))
+      output: >
+        SI-4 ALERT: Wireless interface manipulation detected
+        (user=%user.name process=%proc.name
+        cmdline=%proc.cmdline container=%container.name
+        k8s.ns=%k8s.ns.name)
+      priority: WARNING
+      tags: [si-4, wireless, security]
+
+    # SI-4(22): Behavior monitoring
+    - rule: SI4_Modify_Sudoers
+      desc: SI-4(22): Monitor modifications to sudoers
+      condition: >
+        (modify and (fd.name contains "/etc/sudoers" or fd.name contains "/etc/sudoers.d/")) or
+        (spawned_process and proc.name = visudo)
+      output: >
+        SI-4 ALERT: Sudoers file modification detected
+        (user=%user.name file=%fd.name process=%proc.name
+        cmdline=%proc.cmdline container=%container.name
+        k8s.ns=%k8s.ns.name)
+      priority: WARNING
+      tags: [si-4, sudoers, behavior, security]
+
+    # SI-4(22): Monitor SSH key modifications
+    - rule: SI4_SSH_Key_Modified
+      desc: SI-4(22): Monitor SSH authorized_keys modifications
+      condition: >
+        modify and
+        (fd.name contains "/.ssh/authorized_keys" or
+         fd.name contains "/root/.ssh/" or
+         fd.name contains "/home" and fd.name contains "/.ssh/")
+      output: >
+        SI-4 ALERT: SSH key file modified
+        (user=%user.name file=%fd.name
+        process=%proc.name cmdline=%proc.cmdline
+        container=%container.name k8s.ns=%k8s.ns.name)
+      priority: WARNING
+      tags: [si-4, ssh, keys, behavior, security]
+
+    # SI-4(24): Analyze traffic patterns - multiple failed logins
+    - rule: SI4_Multiple_Failed_Logins
+      desc: SI-4(24): Detect multiple failed login attempts
+      condition: >
+        spawned_process and
+        (proc.name in (login, sshd, sudo) or
+         proc.name = "sshd" or
+         (proc.name = "cat" and fd.name = "/var/log/auth.log")) and
+        (evt.rawres < 0)
+      output: >
+        SI-4 ALERT: Failed login attempt detected
+        (user=%user.name process=%proc.name
+        cmdline=%proc.cmdline container=%container.name
+        k8s.ns=%k8s.ns.name)
+      priority: WARNING
+      tags: [si-4, login, failure, security]
+
+    # Lists for approved processes baseline
+    - list: approved_processes
+      items: [sh, bash, dash, zsh, ash, python, python3, node, ruby, java, go, php,
+              nginx, apache, httpd, mysql, postgres, mongod, redis-server, etcd,
+              kubelet, kube-proxy, kube-apiserver, kube-controller-manager,
+              kube-scheduler, kubectl, containerd, dockerd, runc, pause, 
+              vector, falco, falcoctl, falcosidekick, 
+              falco-exporter, falco-driver-loader]

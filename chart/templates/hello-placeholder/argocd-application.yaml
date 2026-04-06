@@ -7,10 +7,12 @@ metadata:
   name: {{ .name | quote }}
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "55"
+    argocd.argoproj.io/sync-wave: {{ .syncWave | default "55" | quote }}
+    {{- if .kargoAuthorizedStage }}
     kargo.akuity.io/authorized-stage: {{ .kargoAuthorizedStage | quote }}
+    {{- end }}
 spec:
-  project: default
+  project: {{ .project | default "default" | quote }}
   source:
     repoURL: {{ $.Values.helloPlaceholder.repoURL | default $.Values.argocd.repoUrl | quote }}
     targetRevision: {{ $.Values.helloPlaceholder.targetRevision | default $.Values.argocd.targetRevision | quote }}

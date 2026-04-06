@@ -1,0 +1,407 @@
+# FedRAMP AU-2/AU-9: Vector Audit Log Collection
+# Vector DaemonSet for collecting Kubernetes audit logs, container logs, and node events
+# Forwards to S3 (immutable storage) and SIEM for real-time monitoring
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: turnkey-compliance
+  labels:
+    app.kubernetes.io/name: turnkey-compliance
+    app.kubernetes.io/component: compliance
+    fedramp-control: "AU-2,AU-9"
+---
+# Vector ServiceAccount with minimal permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vector-audit
+  namespace: turnkey-compliance
+  labels:
+    app.kubernetes.io/name: vector-audit
+    app.kubernetes.io/component: audit
+---
+# RBAC: Vector needs to read pods/nodes for metadata enrichment
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vector-audit
+  labels:
+    app.kubernetes.io/name: vector-audit
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["daemonsets", "deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vector-audit
+  labels:
+    app.kubernetes.io/name: vector-audit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vector-audit
+subjects:
+  - kind: ServiceAccount
+    name: vector-audit
+    namespace: turnkey-compliance
+---
+# Vector ConfigMap: Configuration for audit log collection
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-config
+  namespace: turnkey-compliance
+  labels:
+    app.kubernetes.io/name: vector-audit
+data:
+  vector.yaml: |
+    # Vector configuration for FedRAMP AU-2/AU-9 compliance
+    # Sources: Kubernetes logs, audit logs, host logs
+    # Sinks: S3 (immutable), SIEM (real-time)
+
+    api:
+      enabled: true
+      address: "0.0.0.0:8686"
+      playground: false
+
+    sources:
+      # AU-2: Collect all Kubernetes container logs
+      kubernetes_logs:
+        type: kubernetes_logs
+        pod_annotation_fields:
+          container_image: "container_image"
+          container_name: "container_name"
+          pod_name: "pod_name"
+          pod_namespace: "pod_namespace"
+        namespace_annotation_fields:
+          namespace_labels: "namespace_labels"
+        node_annotation_fields:
+          node_labels: "node_labels"
+
+      # AU-2: Collect Kubernetes audit logs from host
+      audit_logs:
+        type: file
+        include:
+          - /var/log/kubernetes/audit/*.log
+          - /var/log/kube-apiserver/audit.log
+        ignore_older_secs: 600
+        read_from: beginning
+
+      # AU-2: Host system logs (auth, syslog)
+      host_logs:
+        type: file
+        include:
+          - /var/log/auth.log
+          - /var/log/syslog
+          - /var/log/kern.log
+        ignore_older_secs: 600
+
+      # AU-2: Vector's own logs
+      vector_logs:
+        type: internal_logs
+
+    transforms:
+      # AU-2: Parse and enrich audit events
+      audit_parser:
+        type: remap
+        inputs:
+          - audit_logs
+        source: |
+          # Parse JSON audit events
+          if is_json(.message) {
+            parsed = parse_json!(.message)
+            . = merge(., parsed)
+          }
+          
+          # Add FedRAMP metadata
+          .fedramp_control = "AU-2"
+          .event_type = "audit"
+          .cluster_name = "{{ .Values.global.clusterName | default "turnkey" }}"
+          
+          # Extract important fields for routing
+          if exists(.verb) {
+            .audit_verb = .verb
+          }
+          if exists(.user) {
+            .audit_user = .user.username
+          }
+          if exists(.requestURI) {
+            .audit_uri = .requestURI
+          }
+
+      # AU-2: Filter security-relevant events
+      security_filter:
+        type: filter
+        inputs:
+          - audit_parser
+        condition: |
+          # Filter for security-relevant events (AU-2 requirements)
+          is_string(.audit_verb) && (
+            .audit_verb == "create" ||
+            .audit_verb == "delete" ||
+            .audit_verb == "update" ||
+            .audit_verb == "patch" ||
+            match!(.audit_uri, r'/(secrets|serviceaccounts|roles|rolebindings|clusterroles|clusterrolebindings|pods/exec|pods/attach)') ||
+            match!(.audit_uri, r'/apis/authorization') ||
+            match!(.audit_uri, r'/apis/rbac')
+          )
+
+      # AU-2: Enrich Kubernetes logs with security context
+      k8s_enrichment:
+        type: remap
+        inputs:
+          - kubernetes_logs
+        source: |
+          # Add FedRAMP metadata
+          .fedramp_control = "AU-2"
+          .event_type = "container"
+          .cluster_name = "{{ .Values.global.clusterName | default "turnkey" }}"
+          
+          # Detect privileged operations
+          if exists(.kubernetes.container_name) {
+            if .kubernetes.container_name == "kube-apiserver" ||
+               .kubernetes.container_name == "etcd" ||
+               .kubernetes.container_name == "kube-controller-manager" {
+              .privileged_component = true
+            }
+          }
+
+      # AU-9: Route to appropriate sinks
+      router:
+        type: route
+        inputs:
+          - security_filter
+          - k8s_enrichment
+        route:
+          # AU-2(d): Access to security objects
+          security_objects: 'match!(.audit_uri, r"/(secrets|serviceaccounts|roles|rolebindings|clusterroles|clusterrolebindings)")'
+          # AU-2: Account logon events  
+          auth_events: 'match!(.audit_uri, r"/tokenreviews") || match!(.audit_uri, r"/apis/authentication")'
+          # AU-2: Privileged operations
+          privileged_ops: '(.privileged_component == true) || match!(.audit_uri, r"/pods/exec") || match!(.audit_uri, r"/pods/attach")'
+          # Default: all other audit events
+          default: "true"
+
+    sinks:
+      # AU-9: S3 sink with immutable storage (Object Lock)
+      # Primary storage for 7-year retention requirement
+      s3_immutable:
+        type: aws_s3
+        inputs:
+          - router.security_objects
+          - router.auth_events
+          - router.privileged_ops
+          - router.default
+        bucket: {{ .Values.vector.s3.bucket | default "fedramp-audit-logs" }}
+        region: {{ .Values.vector.s3.region | default "us-east-1" }}
+        prefix: "{{ .Values.vector.s3.prefix | default "audit" }}/cluster={{ .Values.global.clusterName | default "turnkey" }}/date=%Y/%m/%d/"
+        compression: gzip
+        encoding:
+          codec: json
+        # Buffer settings for reliability
+        buffer:
+          type: disk
+          max_size: 1073741824  # 1GB
+          when_full: block
+        # Batch settings for S3 efficiency
+        batch:
+          max_bytes: 10485760   # 10MB
+          timeout_secs: 60
+        # Object Lock enabled at bucket level for AU-9
+        {{ if .Values.vector.s3.objectLock }}
+        options:
+          # S3 Object Lock requires bucket configuration
+          # ObjectLockEnabled: true (configured at bucket level)
+          # DefaultRetention: 7 years
+        {{ end }}
+
+      # AU-2: Real-time SIEM integration
+      {{ if .Values.vector.siem.enabled }}
+      siem_http:
+        type: http
+        inputs:
+          - router.security_objects
+          - router.auth_events
+          - router.privileged_ops
+        uri: {{ .Values.vector.siem.endpoint }}
+        method: post
+        headers:
+          Authorization: "Bearer {{ .Values.vector.siem.token }}"
+          Content-Type: "application/json"
+        encoding:
+          codec: json
+        buffer:
+          type: memory
+          max_events: 10000
+          when_full: drop_newest
+        request:
+          timeout_secs: 30
+          retry_attempts: 5
+          retry_initial_backoff_secs: 1
+          retry_max_duration_secs: 300
+      {{ end }}
+
+      # Local debug output (disable in production)
+      # console:
+      #   type: console
+      #   inputs:
+      #     - router.security_objects
+      #   encoding:
+      #     codec: json
+
+      # Internal Vector metrics
+      internal_metrics:
+        type: internal_metrics
+        inputs: ["vector_logs"]
+---
+# Vector DaemonSet for log collection
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vector-audit
+  namespace: turnkey-compliance
+  labels:
+    app.kubernetes.io/name: vector-audit
+    app.kubernetes.io/component: audit
+    app.kubernetes.io/part-of: turnkey
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vector-audit
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vector-audit
+        app.kubernetes.io/component: audit
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: vector-audit
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: vector
+          image: timberio/vector:0.54.0-distroless-libc
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config
+            - /etc/vector/vector.yaml
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: api
+              containerPort: 8686
+              protocol: TCP
+            - name: prometheus
+              containerPort: 9090
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vector
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/vector
+            - name: var-log
+              mountPath: /var/log
+              readOnly: true
+            - name: var-lib-docker-containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: var-log-pods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: kubernetes-audit
+              mountPath: /var/log/kubernetes/audit
+              readOnly: true
+          env:
+            - name: VECTOR_LOG
+              value: info
+            - name: VECTOR_WATCH_CONFIG
+              value: "true"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: vector-s3-credentials
+                  key: aws-access-key-id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vector-s3-credentials
+                  key: aws-secret-access-key
+                  optional: true
+      volumes:
+        - name: config
+          configMap:
+            name: vector-config
+        - name: data
+          emptyDir:
+            sizeLimit: 2Gi
+        - name: var-log
+          hostPath:
+            path: /var/log
+        - name: var-lib-docker-containers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: var-log-pods
+          hostPath:
+            path: /var/log/pods
+        - name: kubernetes-audit
+          hostPath:
+            path: /var/log/kubernetes/audit
+            type: DirectoryOrCreate
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        kubernetes.io/os: linux
+---
+# Secret template for S3 credentials (populated by External Secrets or manually)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vector-s3-credentials
+  namespace: turnkey-compliance
+  labels:
+    app.kubernetes.io/name: vector-audit
+type: Opaque
+stringData:
+  # These should be populated by External Secrets Operator or Sealed Secrets
+  # Example for AWS S3 Object Lock enabled bucket
+  aws-access-key-id: ""    # Set via external-secrets or manually
+  aws-secret-access-key: "" # Set via external-secrets or manually

@@ -1,0 +1,45 @@
+{{- if .Values.vector.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-vector
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.argocd.repoUrl | quote }}
+    targetRevision: {{ .Values.argocd.targetRevision | quote }}
+    path: deploy/vector-audit
+    helm:
+      values: |
+        global:
+          clusterName: {{ .Values.global.clusterName | quote }}
+        vector:
+          s3:
+            enabled: {{ .Values.vector.s3.enabled }}
+            bucket: {{ .Values.vector.s3.bucket | quote }}
+            region: {{ .Values.vector.s3.region | quote }}
+            prefix: {{ .Values.vector.s3.prefix | quote }}
+            objectLock: {{ .Values.vector.s3.objectLock }}
+          siem:
+            enabled: {{ .Values.vector.siem.enabled }}
+            endpoint: {{ .Values.vector.siem.endpoint | quote }}
+            token: {{ .Values.vector.siem.token | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: turnkey-compliance
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

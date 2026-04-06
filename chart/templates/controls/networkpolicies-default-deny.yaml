@@ -1,0 +1,34 @@
+# FedRAMP SC-7: Boundary Protection
+# NetworkPolicy templates for strict network segmentation
+# Applied via ArgoCD to all namespaces
+---
+# Default deny-all policy template (applied to all non-platform namespaces)
+{{- if .Values.fedramp.networkPolicies.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-default-deny-ingress
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    fedramp.turnkey.io/control: "SC-7"
+    fedramp.turnkey.io/description: "Default deny all ingress traffic"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  # No ingress rules = deny all
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-default-deny-egress
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    fedramp.turnkey.io/control: "SC-7"
+    fedramp.turnkey.io/description: "Default deny all egress traffic"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  # No egress rules = deny all
+{{- end }}

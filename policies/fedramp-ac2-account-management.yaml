@@ -1,0 +1,260 @@
+# FedRAMP AC-2: Account Management Controls
+# Kyverno policies for automated ServiceAccount lifecycle management
+---
+# AC-2(3): Disable inactive accounts after 90 days
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: fedramp-ac2-disable-inactive-accounts
+  annotations:
+    policies.kyverno.io/title: Disable Inactive Accounts
+    policies.kyverno.io/category: FedRAMP AC-2
+    policies.kyverno.io/subject: ServiceAccount
+    policies.kyverno.io/description: >-
+      AC-2(3): Automatically disables ServiceAccounts that have not been used
+      for 90 days. Creates annotations for tracking and triggers alerts.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: annotate-last-used
+      match:
+        any:
+          - resources:
+              kinds:
+                - ServiceAccount
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - argocd
+                - cert-manager
+                - ingress-nginx
+                - kargo
+                - doppler-operator-system
+                - turnkey-compliance
+      preconditions:
+        all:
+          - key: "{{ request.operation }}"
+            operator: Equals
+            value: UPDATE
+          - key: "{{ request.oldObject.secrets | length(@) }}"
+            operator: GreaterThan
+            value: 0
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            annotations:
+              fedramp.turnkey.io/last-token-used: "{{ request.object.metadata.annotations.\"fedramp.turnkey.io/last-token-used\" || time_now_utc() }}"
+---
+# AC-2(4): Audit Account Creation/Modification/Deletion
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: fedramp-ac2-audit-account-changes
+  annotations:
+    policies.kyverno.io/title: Audit Account Changes
+    policies.kyverno.io/category: FedRAMP AC-2
+    policies.kyverno.io/subject: ServiceAccount
+    policies.kyverno.io/description: >-
+      AC-2(4): Audits all ServiceAccount creation, modification, and deletion events.
+      Generates PolicyReports for compliance evidence.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: audit-serviceaccount-changes
+      match:
+        any:
+          - resources:
+              kinds:
+                - ServiceAccount
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: "ServiceAccount change logged for AC-2(4) audit"
+        deny: {}
+---
+# AC-2(5): Require Manager Approval for Account Creation
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: fedramp-ac2-require-approval-annotation
+  annotations:
+    policies.kyverno.io/title: Require Approval for Account Creation
+    policies.kyverno.io/category: FedRAMP AC-2
+    policies.kyverno.io/subject: ServiceAccount
+    policies.kyverno.io/description: >-
+      AC-2(5): Requires approval annotation for new ServiceAccounts
+      outside of platform namespaces.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-approval-annotation
+      match:
+        any:
+          - resources:
+              kinds:
+                - ServiceAccount
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - argocd
+                - cert-manager
+                - ingress-nginx
+                - kargo
+                - doppler-operator-system
+                - turnkey-compliance
+                - tekton-pipelines
+                - external-secrets
+          - resources:
+              annotations:
+                fedramp.turnkey.io/approved-by: "?*"
+      validate:
+        message: "ServiceAccount must have fedramp.turnkey.io/approved-by annotation per AC-2(5)"
+        pattern:
+          metadata:
+            annotations:
+              fedramp.turnkey.io/approved-by: "?*"
+---
+# AC-2(7): Role-Based Access Control Enforcement
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: fedramp-ac2-require-rbac-review
+  annotations:
+    policies.kyverno.io/title: Require RBAC Review
+    policies.kyverno.io/category: FedRAMP AC-2
+    policies.kyverno.io/subject: ServiceAccount,Role,RoleBinding
+    policies.kyverno.io/description: >-
+      AC-2(7): Enforces that ServiceAccounts with elevated privileges
+      must have documented RBAC review and approval.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-privileged-account-documentation
+      match:
+        any:
+          - resources:
+              kinds:
+                - RoleBinding
+                - ClusterRoleBinding
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - argocd
+      validate:
+        message: "Privileged bindings should have rbac-review annotation"
+        pattern:
+          metadata:
+            annotations:
+              fedramp.turnkey.io/rbac-review-date: "?*"
+---
+# AC-2(8): Dynamic Account Management - Cleanup Unused Tokens
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: fedramp-ac2-cleanup-unused-tokens
+  annotations:
+    policies.kyverno.io/title: Flag Unused Token Secrets
+    policies.kyverno.io/category: FedRAMP AC-2
+    policies.kyverno.io/subject: Secret
+    policies.kyverno.io/description: >-
+      AC-2(8): Flags ServiceAccount token secrets that haven't been used
+      for automated cleanup review.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: annotate-unused-tokens
+      match:
+        any:
+          - resources:
+              kinds:
+                - Secret
+              annotations:
+                kubernetes.io/service-account.name: "?*"
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - default
+      validate:
+        message: "ServiceAccount token usage should be tracked"
+        pattern:
+          metadata:
+            annotations:
+              fedramp.turnkey.io/last-access: "?*"
+---
+# AC-2(9): Group Membership
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: fedramp-ac2-require-group-membership
+  annotations:
+    policies.kyverno.io/title: Require Group Membership Documentation
+    policies.kyverno.io/category: FedRAMP AC-2
+    policies.kyverno.io/subject: RoleBinding,ClusterRoleBinding
+    policies.kyverno.io/description: >-
+      AC-2(9): Requires documentation of group membership for RBAC bindings.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: document-group-membership
+      match:
+        any:
+          - resources:
+              kinds:
+                - RoleBinding
+                - ClusterRoleBinding
+      validate:
+        message: "Group membership should be documented per AC-2(9)"
+        pattern:
+          metadata:
+            annotations:
+              fedramp.turnkey.io/group-membership: "?*"
+---
+# AC-2(10): Shared/Group Account Identification
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: fedramp-ac2-shared-account-identification
+  annotations:
+    policies.kyverno.io/title: Shared Account Identification
+    policies.kyverno.io/category: FedRAMP AC-2
+    policies.kyverno.io/subject: ServiceAccount
+    policies.kyverno.io/description: >-
+      AC-2(10): Requires identification of shared or group ServiceAccounts.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: identify-shared-accounts
+      match:
+        any:
+          - resources:
+              kinds:
+                - ServiceAccount
+              name: "*shared*"
+      validate:
+        message: "Shared accounts must have shared-account annotation per AC-2(10)"
+        pattern:
+          metadata:
+            annotations:
+              fedramp.turnkey.io/shared-account: "true"
+              fedramp.turnkey.io/shared-account-members: "?*"

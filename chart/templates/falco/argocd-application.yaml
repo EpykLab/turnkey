@@ -1,0 +1,57 @@
+{{- if .Values.falco.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turnkey-falco
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  project: default
+  source:
+    repoURL: https://falcosecurity.github.io/charts
+    chart: falco
+    targetRevision: "4.20.0"
+    helm:
+      values: |
+        # Falco configuration for FedRAMP SI-4 compliance
+        driver:
+          kind: modern_ebpf
+        collectors:
+          enabled: true
+        falco:
+          rules_file:
+            - /etc/falco/falco_rules.yaml
+            - /etc/falco/falco_rules.local.yaml
+            - /etc/falco/rules.d/fedramp-si4-rules.yaml
+          json_output: true
+          json_include_output_property: true
+          priority: warning
+          http_output:
+            enabled: {{ .Values.falco.siem.enabled }}
+            url: {{ .Values.falco.siem.endpoint }}
+        falcosidekick:
+          enabled: true
+          config:
+            slack:
+              webhookurl: ""
+            webhook:
+              address: {{ .Values.falco.siem.endpoint }}
+          webui:
+            enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: turnkey-compliance
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 15
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

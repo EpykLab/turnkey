@@ -26,6 +26,7 @@ spec:
                 - ingress-nginx
                 - external-secrets
                 - tekton-pipelines
+                - tekton-pipelines-resolvers
                 - doppler-operator-system
                 - kargo
                 - kargo-cluster-secrets
@@ -71,6 +72,7 @@ spec:
                 - ingress-nginx
                 - external-secrets
                 - tekton-pipelines
+                - tekton-pipelines-resolvers
                 - doppler-operator-system
                 - kargo
                 - kargo-cluster-secrets
@@ -111,6 +113,7 @@ spec:
                 - ingress-nginx
                 - external-secrets
                 - tekton-pipelines
+                - tekton-pipelines-resolvers
                 - doppler-operator-system
                 - kargo
                 - kargo-cluster-secrets

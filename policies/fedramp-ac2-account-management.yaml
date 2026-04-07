@@ -115,6 +115,7 @@ spec:
                 - doppler-operator-system
                 - turnkey-compliance
                 - tekton-pipelines
+                - tekton-pipelines-resolvers
                 - external-secrets
           - resources:
               annotations:

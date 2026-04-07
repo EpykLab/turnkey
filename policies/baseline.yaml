@@ -78,6 +78,7 @@ spec:
                 - kargo-cluster-secrets
                 - kargo-shared-resources
                 - kargo-system-resources
+                - turnkey-compliance
           - resources:
               kinds:
                 - CronJob

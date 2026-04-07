@@ -20,7 +20,7 @@ spec:
         collectors:
           enabled: true
         falco:
-          rules_file:
+          rules_files:
             - /etc/falco/falco_rules.yaml
             - /etc/falco/falco_rules.local.yaml
             - /etc/falco/rules.d/fedramp-si4-rules.yaml

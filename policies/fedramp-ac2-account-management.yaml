@@ -114,6 +114,7 @@ spec:
                 - kargo
                 - doppler-operator-system
                 - turnkey-compliance
+                - turnkey-status
                 - tekton-pipelines
                 - tekton-pipelines-resolvers
                 - external-secrets

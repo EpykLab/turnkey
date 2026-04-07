@@ -1,18 +1,12 @@
 # FedRAMP SC-7(3-7): Access Point Restrictions & External Connections
 # Allow specific traffic in workload namespaces
+# 
+# NOTE: ArgoCD namespace NetworkPolicies are deployed separately
+# See deploy/network-policies/argocd/ for ArgoCD-specific policies
 {{- if .Values.fedramp.networkPolicies.enabled }}
 
-# ============================================================================
-# Section 1: ArgoCD Namespace - Additional Allow Rules (complement default-deny policies)
-# ============================================================================
-{{- if eq .Release.Namespace "argocd" }}
-# ArgoCD specific policies are defined in networkpolicies-default-deny.yaml
-# This section reserved for future ArgoCD-specific exception rules
-
-# ============================================================================
-# Section 2: Workload Namespaces - Exception Rules for Default Deny
-# ============================================================================
-{{- else if and (ne .Release.Namespace "cert-manager") (ne .Release.Namespace "kyverno") (ne .Release.Namespace "kube-system") (ne .Release.Namespace "ingress-nginx") }}
+# Only deploy to workload namespaces (not platform namespaces)
+{{- if and (ne .Release.Namespace "argocd") (ne .Release.Namespace "cert-manager") (ne .Release.Namespace "kyverno") (ne .Release.Namespace "kube-system") (ne .Release.Namespace "ingress-nginx") }}
 ---
 # SC-7(3): Allow ingress from nginx ingress controller
 apiVersion: networking.k8s.io/v1

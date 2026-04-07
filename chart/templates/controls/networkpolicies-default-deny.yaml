@@ -1,9 +1,147 @@
 # FedRAMP SC-7: Boundary Protection
 # NetworkPolicy templates for strict network segmentation
-# Applied via ArgoCD to all namespaces
----
-# Default deny-all policy template (applied to all non-platform namespaces)
 {{- if .Values.fedramp.networkPolicies.enabled }}
+
+# ============================================================================
+# Section 1: ArgoCD Namespace - Specific Allow Rules (NOT default deny)
+# ============================================================================
+{{- if eq .Release.Namespace "argocd" }}
+---
+# Allow ArgoCD to communicate with Kubernetes API server
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-argocd-k8s-api
+  namespace: argocd
+  annotations:
+    fedramp.turnkey.io/control: "SC-7"
+    fedramp.turnkey.io/description: "Allow ArgoCD egress to Kubernetes API"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to Kubernetes API server (control plane)
+    - to:
+        - ipBlock:
+            cidr: 10.116.0.0/16  # DOKS control plane CIDR (adjust for your provider)
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Allow ArgoCD to access external git repos (GitHub)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-argocd-git-access
+  namespace: argocd
+  annotations:
+    fedramp.turnkey.io/control: "SC-7"
+    fedramp.turnkey.io/description: "Allow ArgoCD egress to git repositories"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  policyTypes:
+    - Egress
+  egress:
+    # Allow HTTPS to anywhere (for git repos like GitHub)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow SSH git access
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 22
+---
+# Allow ingress to ArgoCD server from nginx ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-argocd-ingress
+  namespace: argocd
+  annotations:
+    fedramp.turnkey.io/control: "SC-7"
+    fedramp.turnkey.io/description: "Allow ingress to ArgoCD server from nginx"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from nginx ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 443
+    # Allow internal ArgoCD communication
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# Allow internal ArgoCD component communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fedramp-sc7-argocd-internal
+  namespace: argocd
+  annotations:
+    fedramp.turnkey.io/control: "SC-7"
+    fedramp.turnkey.io/description: "Allow internal ArgoCD component communication"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from same namespace
+    - from:
+        - podSelector: {}
+  egress:
+    # Allow to same namespace
+    - to:
+        - podSelector: {}
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+
+# ============================================================================
+# Section 2: Workload Namespaces - Default Deny with Exceptions
+# ============================================================================
+{{- else if and (ne .Release.Namespace "cert-manager") (ne .Release.Namespace "kyverno") (ne .Release.Namespace "kube-system") (ne .Release.Namespace "ingress-nginx") }}
+---
+# Default deny-all ingress policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -18,6 +156,7 @@ spec:
     - Ingress
   # No ingress rules = deny all
 ---
+# Default deny-all egress policy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -31,4 +170,5 @@ spec:
   policyTypes:
     - Egress
   # No egress rules = deny all
+{{- end }}
 {{- end }}

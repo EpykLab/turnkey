@@ -1,6 +1,20 @@
-# FedRAMP SC-7(3): Access Point Restrictions
-# Allow specific ingress from approved sources
+# FedRAMP SC-7(3-7): Access Point Restrictions & External Connections
+# Allow specific traffic in workload namespaces
 {{- if .Values.fedramp.networkPolicies.enabled }}
+
+# ============================================================================
+# Section 1: ArgoCD Namespace - Additional Allow Rules (complement default-deny policies)
+# ============================================================================
+{{- if eq .Release.Namespace "argocd" }}
+# ArgoCD specific policies are defined in networkpolicies-default-deny.yaml
+# This section reserved for future ArgoCD-specific exception rules
+
+# ============================================================================
+# Section 2: Workload Namespaces - Exception Rules for Default Deny
+# ============================================================================
+{{- else if and (ne .Release.Namespace "cert-manager") (ne .Release.Namespace "kyverno") (ne .Release.Namespace "kube-system") (ne .Release.Namespace "ingress-nginx") }}
+---
+# SC-7(3): Allow ingress from nginx ingress controller
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -38,7 +52,7 @@ spec:
         - protocol: TCP
           port: 8443
 ---
-# SC-7(4): External Connections
+# SC-7(4): External Connections - Allow egress to approved external endpoints
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -78,7 +92,7 @@ spec:
         - protocol: TCP
           port: 80
 ---
-# SC-7(5): Deny by Default, Allow by Exception
+# SC-7(5): Deny by Default, Allow by Exception - Internal Communication
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -149,4 +163,5 @@ spec:
           port: 8443
         - protocol: TCP
           port: 443
+{{- end }}
 {{- end }}

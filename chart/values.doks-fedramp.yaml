@@ -101,23 +101,23 @@ vector:
 
 # FedRAMP SC-7: Boundary Protection  
 # NetworkPolicy enforcement for namespace isolation
-# NOTE: Disabled - NetworkPolicies were being applied to argocd namespace and blocking ArgoCD
+# Now includes specific allow rules for ArgoCD namespace and default-deny for workload namespaces
 fedramp:
   networkPolicies:
-    enabled: false  # Disabled for initial deployment
+    enabled: true  # Re-enabled with proper namespace-aware rules
   # SC-8 Transmission Confidentiality: Application-level mTLS as alternative
   # (Linkerd with FIPS build would be preferred but requires pre-installation)
   mtls:
     enabled: false  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
   # Application-level mTLS (alternative to service mesh)
-  # NOTE: Disabled for initial deployment - requires cert-manager CRDs to be installed first
+  # NOTE: Requires cert-manager CRDs - enabled now that cert-manager is deployed
   appLevelMTLS:
-    enabled: false
+    enabled: true
     issuerName: "fedramp-fips-ca"  # ClusterIssuer for service certificates
   # Enforce FIPS 140-2 cipher suites via Kyverno policies
-  # NOTE: Disabled for initial deployment - requires kyverno CRDs to be installed first
+  # NOTE: Requires kyverno CRDs - enabled now that kyverno is deployed
   enforceFIPS:
-    enabled: false
+    enabled: true
 
 # FedRAMP SI-4: Information System Monitoring
 # Falco runtime security with custom FedRAMP rules

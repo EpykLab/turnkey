@@ -50,7 +50,7 @@ func ApplyPlatformApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, arg
 						"prune":    true,
 						"selfHeal": true,
 					},
-					"syncOptions": []string{"CreateNamespace=true"},
+					"syncOptions": []string{"CreateNamespace=true", "SkipDryRunOnMissingResource=true"},
 					"retry": map[string]interface{}{
 						"limit": 15,
 						"backoff": map[string]interface{}{

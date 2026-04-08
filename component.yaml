@@ -1,0 +1,354 @@
+schema_version: 1
+capability:
+  id: bfa08ff4-6b64-4b98-9e15-c03a4d2f5b11
+  name: Kubernetes Platform Baseline
+  description_markdown: |
+    Provides a complete Kubernetes platform baseline including cluster provisioning,
+    GitOps deployment orchestration, certificate management, ingress handling, policy
+    enforcement, CI/CD pipelines, secrets management, and security hardening components
+    for SOC 2, HIPAA, and FedRAMP compliance.
+  tags:
+    - kubernetes
+    - platform
+    - baseline
+    - gitops
+    - compliance
+---
+schema_version: 1
+capability:
+  id: 42d6e3b0-3a1d-4f0f-b21e-a8e5d5c4f3a2
+  name: Cluster Provisioning and Infrastructure
+  description_markdown: |
+    Provisions Kubernetes clusters on cloud providers (AKS, DOKS) using Pulumi with
+    automated kubeconfig management, node pools, networking, and storage configuration.
+  tags:
+    - pulumi
+    - infrastructure
+    - aks
+    - doks
+    - cluster
+---
+schema_version: 1
+capability:
+  id: 9c1b8d73-8e15-4c32-b7a4-f2e6d9b8c5a3
+  name: GitOps Deployment Orchestration
+  description_markdown: |
+    Manages continuous deployment via ArgoCD with app-of-apps pattern, automated
+    synchronization, health checks, and multi-environment promotion workflows via Kargo.
+  tags:
+    - argocd
+    - gitops
+    - kargo
+    - deployment
+    - cd
+---
+schema_version: 1
+capability:
+  id: 7f2a9c6d-5e4b-4d8a-9f1c-8b3e7d2c4a5f
+  name: TLS Certificate Management
+  description_markdown: |
+    Automates TLS certificate issuance, renewal, and rotation via cert-manager with
+    ACME (Let's Encrypt) integration and Cloudflare DNS01 challenge support.
+  tags:
+    - cert-manager
+    - tls
+    - certificates
+    - encryption
+---
+schema_version: 1
+capability:
+  id: a8d5f7b2-1c4e-4a9b-8e3d-6f2c5b9a7d4e
+  name: Ingress and Gateway Management
+  description_markdown: |
+    Provides HTTP/HTTPS ingress handling via NGINX Ingress Controller and Gateway API
+    support via Caddy Gateway for routing, load balancing, and termination.
+  tags:
+    - ingress
+    - nginx
+    - gateway
+    - caddy
+    - routing
+---
+schema_version: 1
+capability:
+  id: e3b9a8f5-2d6c-4b1a-9e7f-5a4d8c3b2f1e
+  name: Security Policy Enforcement
+  description_markdown: |
+    Enforces security policies via Kyverno with admission control for image digest
+    pinning, resource limits, RBAC constraints, and FedRAMP security controls.
+  tags:
+    - kyverno
+    - policy
+    - security
+    - admission-control
+    - opa
+---
+schema_version: 1
+capability:
+  id: f6c4e9a2-8b5d-4f7c-9a1e-3d2b6c5a8f4d
+  name: CI/CD Pipeline Execution
+  description_markdown: |
+    Runs continuous integration and delivery pipelines via Tekton with pipeline
+    definitions, task automation, and webhook-triggered builds.
+  tags:
+    - tekton
+    - ci-cd
+    - pipelines
+    - automation
+---
+schema_version: 1
+capability:
+  id: d7e5b8c3-4a9f-4d2b-8e1c-6f5a3d9b7c2e
+  name: Secrets Management and Synchronization
+  description_markdown: |
+    Synchronizes secrets from Doppler to Kubernetes with automatic rotation support
+    and integration with External Secrets Operator for multi-source secret management.
+  tags:
+    - doppler
+    - external-secrets
+    - secrets
+    - vault
+---
+schema_version: 1
+capability:
+  id: c5a7d9f1-3b8e-4c6a-9d2f-7e4b5a8c3d6f
+  name: Observability and Telemetry
+  description_markdown: |
+    Collects and exports OpenTelemetry metrics, traces, and logs to Elastic or
+    other backends for monitoring, alerting, and performance analysis.
+  tags:
+    - otel
+    - observability
+    - monitoring
+    - elastic
+    - telemetry
+---
+schema_version: 1
+capability:
+  id: b8e3f6c5-9a4d-4b7e-8f2c-1a5d6e9b3c7f
+  name: Security Scanning and Compliance Validation
+  description_markdown: |
+    Performs CIS-oriented security scanning via kube-bench and policy validation
+    for compliance baselines and regression detection.
+  tags:
+    - kube-bench
+    - cis
+    - security-scanning
+    - compliance
+---
+schema_version: 1
+capability:
+  id: a2f8d5b7-6c3e-4a9b-8d1f-4e7a5c6b9d3f
+  name: Chaos Engineering
+  description_markdown: |
+    Supports controlled chaos experiments via Chaos Mesh for resilience testing,
+    failure injection, and system hardening validation.
+  tags:
+    - chaos-mesh
+    - chaos-engineering
+    - resilience
+    - testing
+---
+schema_version: 1
+capability:
+  id: 9d4a7c2f-5b8e-4f3a-9c6d-8a1b4e7f5c2d
+  name: Service Mesh and mTLS
+  description_markdown: |
+    Provides pod-to-pod mutual TLS encryption via Linkerd (FIPS-compliant) or
+    Istio for FedRAMP SC-8 transmission confidentiality with automatic certificate rotation.
+  tags:
+    - linkerd
+    - istio
+    - mtls
+    - service-mesh
+    - fips
+---
+schema_version: 1
+capability:
+  id: 5c8e2b9f-7a4d-4f1c-9b6e-3d5a8c4f2b7e
+  name: Network Policy and CNI
+  description_markdown: |
+    Implements Container Network Interface via Cilium with NetworkPolicy enforcement,
+    Hubble observability, and zero-trust network segmentation.
+  tags:
+    - cilium
+    - cni
+    - network-policy
+    - hubble
+---
+schema_version: 1
+capability:
+  id: 8f3b7a5c-9e2d-4c6b-8a4f-1d7e5c9b3a6d
+  name: FedRAMP Audit Logging
+  description_markdown: |
+    Collects audit logs via Vector with S3 Object Lock immutable storage and
+    SIEM forwarding for FedRAMP AU-2/AU-9 compliance with 7-year retention.
+  tags:
+    - vector
+    - audit-logging
+    - fedramp
+    - au-2
+    - au-9
+    - s3
+---
+schema_version: 1
+capability:
+  id: 3a7f5c9b-8e4d-4b2a-9c6f-5d8a3e7b2c1f
+  name: Runtime Security Monitoring
+  description_markdown: |
+    Monitors runtime security via Falco with behavioral analysis, anomaly detection,
+    and FedRAMP SI-4 information system monitoring capabilities.
+  tags:
+    - falco
+    - runtime-security
+    - fedramp
+    - si-4
+    - threat-detection
+---
+schema_version: 1
+capability:
+  id: 6d2e8b4f-5c9a-4d3b-8f7e-1a6c5b9d4e2f
+  name: Network Boundary Protection
+  description_markdown: |
+    Enforces FedRAMP SC-7 boundary protection via NetworkPolicies with default-deny
+    rules, namespace isolation, and cross-tenant traffic restrictions.
+  tags:
+    - network-policies
+    - sc-7
+    - boundary-protection
+    - fedramp
+    - segmentation
+---
+schema_version: 1
+capability:
+  id: 4c9a5f8b-7d3e-4b6a-9f2c-8a1d5e7c4b3f
+  name: Cluster Health Status
+  description_markdown: |
+    Exposes cluster health and readiness status via a public HTTP endpoint
+    for external monitoring and smoke testing.
+  tags:
+    - status-page
+    - health-checks
+    - monitoring
+---
+schema_version: 1
+capability:
+  id: 2e7b6d5a-8c4f-4a9d-9b3e-5c8a2f7d1e6b
+  name: Application Lifecycle Management
+  description_markdown: |
+    Manages external application deployments with Kustomize/Kargo integration,
+    multi-environment overlays (preview, demo, prod), and automated promotions.
+  tags:
+    - kustomize
+    - kargo
+    - application-management
+    - promotions
+---
+schema_version: 1
+capability:
+  id: 7a5f3c9b-4e8d-4b2a-6f9c-8d1a3e7b5c2f
+  name: FIPS 140-2 Cryptographic Enforcement
+  description_markdown: |
+    Enforces FIPS 140-2 validated cryptographic algorithms and cipher suites
+    via Kyverno policies for FedRAMP compliance (excludes WireGuard/ChaCha20).
+  tags:
+    - fips
+    - cryptography
+    - fedramp
+    - kyverno
+    - compliance
+---
+schema_version: 1
+component:
+  id: 3c914698-ae9f-40f8-a506-093c737e3da3
+  name: Turnkey Platform Baseline
+  description_markdown: |
+    Turnkey is the platform baseline for provisioning and bootstrapping Kubernetes
+    clusters with Pulumi and Argo CD. It provides a comprehensive, security-hardened
+    foundation for deploying containerized workloads with SOC 2, HIPAA, and FedRAMP
+    compliance capabilities.
+
+    The platform includes automated cluster provisioning (AKS, DOKS), GitOps-based
+    deployment orchestration, certificate management, ingress handling, policy
+    enforcement, CI/CD pipelines, secrets management, observability, and extensive
+    security controls including FedRAMP SC-8 mTLS, SC-7 boundary protection,
+    AU-2/AU-9 audit logging, and SI-4 runtime monitoring.
+
+    Key Features:
+    - **Cluster Provisioning**: Pulumi-based infrastructure-as-code for AKS/DOKS
+    - **GitOps**: ArgoCD with app-of-apps pattern and Kargo promotion management
+    - **Security**: Kyverno policies, NetworkPolicies, Falco runtime security
+    - **FedRAMP**: FIPS 140-2 validated mTLS, audit logging, boundary protection
+    - **Observability**: OpenTelemetry, Vector audit collection, health endpoints
+    - **CI/CD**: Tekton pipelines with webhook triggers
+    - **Secrets**: Doppler integration with automatic synchronization
+    - **Compliance**: kube-bench CIS scanning, chaos engineering capabilities
+  provides_capability_refs:
+    - type: capability
+      id: bfa08ff4-6b64-4b98-9e15-c03a4d2f5b11
+    - type: capability
+      id: 42d6e3b0-3a1d-4f0f-b21e-a8e5d5c4f3a2
+    - type: capability
+      id: 9c1b8d73-8e15-4c32-b7a4-f2e6d9b8c5a3
+    - type: capability
+      id: 7f2a9c6d-5e4b-4d8a-9f1c-8b3e7d2c4a5f
+    - type: capability
+      id: a8d5f7b2-1c4e-4a9b-8e3d-6f2c5b9a7d4e
+    - type: capability
+      id: e3b9a8f5-2d6c-4b1a-9e7f-5a4d8c3b2f1e
+    - type: capability
+      id: f6c4e9a2-8b5d-4f7c-9a1e-3d2b6c5a8f4d
+    - type: capability
+      id: d7e5b8c3-4a9f-4d2b-8e1c-6f5a3d9b7c2e
+    - type: capability
+      id: c5a7d9f1-3b8e-4c6a-9d2f-7e4b5a8c3d6f
+    - type: capability
+      id: b8e3f6c5-9a4d-4b7e-8f2c-1a5d6e9b3c7f
+    - type: capability
+      id: a2f8d5b7-6c3e-4a9b-8d1f-4e7a5c6b9d3f
+    - type: capability
+      id: 9d4a7c2f-5b8e-4f3a-9c6d-8a1b4e7f5c2d
+    - type: capability
+      id: 5c8e2b9f-7a4d-4f1c-9b6e-3d5a8c4f2b7e
+    - type: capability
+      id: 8f3b7a5c-9e2d-4c6b-8a4f-1d7e5c9b3a6d
+    - type: capability
+      id: 3a7f5c9b-8e4d-4b2a-9c6f-5d8a3e7b2c1f
+    - type: capability
+      id: 6d2e8b4f-5c9a-4d3b-8f7e-1a6c5b9d4e2f
+    - type: capability
+      id: 4c9a5f8b-7d3e-4b6a-9f2c-8a1d5e7c4b3f
+    - type: capability
+      id: 2e7b6d5a-8c4f-4a9d-9b3e-5c8a2f7d1e6b
+    - type: capability
+      id: 7a5f3c9b-4e8d-4b2a-6f9c-8d1a3e7b5c2f
+  owner_refs:
+    - type: personnel
+      id: david@stellarbridge.app
+  tags:
+    - kubernetes
+    - platform
+    - baseline
+    - gitops
+    - argocd
+    - pulumi
+    - cert-manager
+    - kyverno
+    - tekton
+    - doppler
+    - security
+    - fedramp
+    - fips
+    - compliance
+    - soc2
+    - hipaa
+    - caddy
+    - nginx
+    - vector
+    - falco
+    - linkerd
+    - cilium
+    - kargo
+source:
+  repository: https://github.com/EpykLab/turnkey
+  path: component.yaml

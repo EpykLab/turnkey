@@ -68,12 +68,15 @@ helloPlaceholder:
     - name: stllr-preview
       path: deploy/hello-placeholder/overlays/preview
       namespace: tenant-hello-preview
+      project: tenant
       kargoAuthorizedStage: "stllr:preview"
     - name: stllr-demo
       path: deploy/hello-placeholder/overlays/demo
       namespace: tenant-hello-demo
+      project: tenant
       kargoAuthorizedStage: "stllr:demo"
     - name: stllr-prod
       path: deploy/hello-placeholder/overlays/prod
       namespace: tenant-hello-prod
+      project: tenant
       kargoAuthorizedStage: "stllr:prod"

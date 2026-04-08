@@ -45,3 +45,14 @@ tasks:
         curl -s -o /dev/null -w "%{http_code}" \
           http://$(kubectl get services -n turnkey-status -o json | jq -r '.items[0].status.loadBalancer.ingress[0].ip') \
         | grep 200 && CODE=$? exit $CODE
+  access:kargo:
+    silent: true
+    cmds:
+      - kubectl port-forward svc/kargo-api -n kargo 8888:443
+  access:argo:
+    cmds:
+      - kubectl port-forward svc/argocd-server -n argocd 8989:443
+  secrets:argocd:
+    silent: true
+    cmds:
+      - kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d

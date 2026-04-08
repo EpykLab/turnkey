@@ -27,6 +27,7 @@ metadata:
     policies.kyverno.io/title: Require Change Control Annotation
     policies.kyverno.io/category: Change Control
     policies.kyverno.io/subject: ClusterPolicy,ClusterRole,ClusterRoleBinding
+    turnkey.io/change-control: https://github.com/EpykLab/turnkey
     policies.kyverno.io/description: >-
       Requires a turnkey.io/change-control annotation on cluster-scoped security
       resources (ClusterPolicy, ClusterRole, ClusterRoleBinding). This ensures every

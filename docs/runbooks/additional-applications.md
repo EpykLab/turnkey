@@ -106,7 +106,7 @@ pulumi config set turnkey:additionalApps '[
 | `valueFiles` | []string | No | Helm value files to use |
 | `helmValues` | object | No | Inline Helm values (key-value pairs) |
 | `syncWave` | string | No | ArgoCD sync wave (default: "50") |
-| `project` | string | No | ArgoCD project (default: "default") |
+| `project` | string | No | ArgoCD project (default: `"tenant"`) |
 
 ## Use Cases
 
@@ -369,8 +369,32 @@ pulumi config get turnkey:additionalApps
 
 ## Security Considerations
 
-- **Private repositories**: ArgoCD needs credentials. Add via ArgoCD UI or create a repository secret.
-- **Sensitive values**: Don't put secrets in `helmValues`. Use Sealed Secrets or External Secrets.
+### AppProject restrictions
+
+All additional applications run in the `tenant` ArgoCD AppProject by default. This project deliberately blocks deployment of cluster-scoped security resources:
+
+- `ClusterPolicy` (Kyverno)
+- `ClusterRole` / `ClusterRoleBinding`
+- `CustomResourceDefinition`
+- `MutatingWebhookConfiguration` / `ValidatingWebhookConfiguration`
+
+This is intentional. If your application legitimately needs one of these, it must be added to your turnkey repo and deployed via the `platform` project — the PR is the change control record. See the [trust model section in the README](../../README.md#trust-model-platform-vs-tenant).
+
+To explicitly use the platform project (rare, requires justification):
+```json
+{
+  "name": "my-app",
+  "project": "platform",
+  ...
+}
+```
+
+Note: the `platform` project only accepts sources from your turnkey repo URL (`argocd.repoUrl`). External repos must use `tenant`.
+
+### Other considerations
+
+- **Private repositories**: ArgoCD needs credentials. Add via ArgoCD UI or create a repository Secret in the `argocd` namespace.
+- **Sensitive values**: Don't put secrets in `helmValues`. Use Doppler, Sealed Secrets, or External Secrets.
 - **Namespace isolation**: Deploying into existing namespaces (tekton-pipelines, kargo) means those resources run with platform-level permissions. Ensure your definitions are trusted.
 
 ## See Also

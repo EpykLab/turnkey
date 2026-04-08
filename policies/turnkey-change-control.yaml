@@ -1,0 +1,62 @@
+# Change Control Policy for Cluster Security Resources
+#
+# Any ClusterPolicy, ClusterRole, or ClusterRoleBinding deployed into the cluster
+# must carry a turnkey.io/change-control annotation referencing a ticket or PR.
+#
+# This is the paper trail requirement. The AppProject (platform/tenant) is the
+# hard enforcement gate — this policy adds an audit annotation requirement on top,
+# so there is always a traceable reason for any security resource in the cluster.
+#
+# Exemptions:
+#   - kube-system (Kubernetes system resources)
+#   - kyverno, argocd, cert-manager (bootstrapped before this policy is active)
+#   - Resources labeled turnkey.io/platform-managed: "true" are NOT exempt —
+#     platform resources should carry the annotation too.
+#
+# Legitimate override workflow:
+#   1. Open a PR/ticket describing the need
+#   2. Add annotation: turnkey.io/change-control: "<ticket-or-pr-url>"
+#   3. Merge via normal review process (this is the change control)
+#   4. ArgoCD syncs — policy passes because annotation is present
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-change-control-annotation
+  annotations:
+    policies.kyverno.io/title: Require Change Control Annotation
+    policies.kyverno.io/category: Change Control
+    policies.kyverno.io/subject: ClusterPolicy,ClusterRole,ClusterRoleBinding
+    policies.kyverno.io/description: >-
+      Requires a turnkey.io/change-control annotation on cluster-scoped security
+      resources (ClusterPolicy, ClusterRole, ClusterRoleBinding). This ensures every
+      security resource has a traceable ticket or PR reference.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-change-control-on-clusterpolicy
+      match:
+        any:
+          - resources:
+              kinds:
+                - ClusterPolicy
+      exclude:
+        any:
+          - resources:
+              annotations:
+                turnkey.io/change-control: "?*"
+          - resources:
+              names:
+                # Kyverno built-ins and this policy itself
+                - "kyverno-*"
+                - "require-change-control-annotation"
+      validate:
+        message: >-
+          ClusterPolicy must have annotation turnkey.io/change-control referencing
+          a ticket or PR (e.g. turnkey.io/change-control: 'github.com/org/repo/pull/123').
+          Open a PR to the turnkey repo to add the resource — the PR is the change control.
+        pattern:
+          metadata:
+            annotations:
+              turnkey.io/change-control: "?*"

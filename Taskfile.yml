@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+env:
+  PLATFORM: "doks"
+
+tasks:
+  show-kubecfg:
+    desc: Show the kubeconfig
+    cmds:
+      - cd pulumi/ && pulumi stack output kubeconfig --show-secrets
+
+  save-kubecfg:
+    desc: Save the kubeconfig
+    cmds:
+      - |
+        read -p "This will overwrite ~/.kube/config. Continue? [y/n] "
+        echo    # Move to a new line
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "Proceeding..."
+        else
+            echo "Aborting."
+            exit 1
+        fi
+
+      - cd pulumi/ && pulumi stack output kubeconfig --show-secrets > ~/.kube/config
+
+  deploy:
+    cmds:
+      - scripts/deploy-$PLATFORM.sh
+
+  destroy:
+    cmds:
+      - scripts/destroy-$PLATFORM.sh
+
+  refresh:
+    cmds:
+      - scripts/refresh-$PLATFORM.sh
+
+  status:
+    silent: true
+    cmds:
+      - |
+        curl -s -o /dev/null -w "%{http_code}" \
+          http://$(kubectl get services -n turnkey-status -o json | jq -r '.items[0].status.loadBalancer.ingress[0].ip') \
+        | grep 200 && CODE=$? exit $CODE

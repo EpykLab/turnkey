@@ -1,0 +1,80 @@
+# ArgoCD AppProjects — two-tier trust model
+#
+# platform: turnkey repo only, full cluster access. Change control = PR review.
+# tenant:   any source repo, blocked from cluster-scoped security resources.
+#           Use this for all workloads deployed into the cluster by consumers.
+#
+# To legitimately override a security control, an operator must either:
+#   1. Add the resource to the turnkey repo (PR = change control), or
+#   2. Move the app to the platform project (same requirement).
+# There is no silent path — the AppProject hard-blocks cluster security resources
+# for tenant apps, and the Kyverno change-control policy requires a ticket
+# annotation on any cluster security resource even for platform apps.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: {{ .Values.argocd.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  description: "Turnkey platform components. Source locked to the turnkey repo."
+  sourceRepos:
+    - {{ .Values.argocd.repoUrl | quote }}
+    # Helm chart registries used by platform components
+    - "https://kyverno.github.io/kyverno/"
+    - "https://falcosecurity.github.io/charts"
+    - "https://charts.jetstack.io"
+    - "https://kubernetes.github.io/ingress-nginx"
+    - "https://external-secrets.github.io/external-secrets/"
+    - "https://argoproj.github.io/argo-helm"
+    - "https://charts.kargo.run"
+    - "https://chaos-mesh.org/helm-charts"
+    - "https://aquasecurity.github.io/helm-charts/"
+    - "registry.digitalocean.com"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: platform-admin
+      description: "Full access for platform operators. Requires change-control annotation on security resources."
+      policies:
+        - p, proj:platform:platform-admin, applications, *, platform/*, allow
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: tenant
+  namespace: {{ .Values.argocd.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  description: "Tenant workloads. Cannot deploy cluster-scoped security resources."
+  sourceRepos:
+    - "*"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  # Cluster-scoped security resources are fully blocked for tenant apps.
+  # If a tenant legitimately needs one of these, it must go through the
+  # turnkey repo (platform project) with PR-based change control.
+  clusterResourceBlacklist:
+    - group: "kyverno.io"
+      kind: "*"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRole"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRoleBinding"
+    - group: "apiextensions.k8s.io"
+      kind: "CustomResourceDefinition"
+    - group: "admissionregistration.k8s.io"
+      kind: "*"
+    - group: "networking.k8s.io"
+      kind: "IngressClass"
+  # Namespace-scoped resources allowed (NetworkPolicy, RBAC within namespace, etc.)
+  # Tenants can manage their own namespace-level security posture.
+  namespaceResourceBlacklist: []

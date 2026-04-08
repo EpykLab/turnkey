@@ -5,6 +5,10 @@ global:
 
 argocd:
   namespace: argocd
+  # repoUrl is the single override point for forks.
+  # Set this to your fork's URL in your stack config (stacks/<env>.yaml or Pulumi.<env>.yaml).
+  # It controls: ArgoCD Application sources, the platform AppProject's allowed sourceRepos,
+  # and the turnkey.io/change-control annotation on Helm-rendered policies.
   repoUrl: https://github.com/EpykLab/turnkey
   targetRevision: master
   path: chart
@@ -156,18 +160,12 @@ vector:
 fedramp:
   networkPolicies:
     enabled: false  # Enable to deploy default-deny and exception policies
-  # SC-8 Transmission Confidentiality: RECOMMENDED - Linkerd with FIPS build
+  # SC-8 Transmission Confidentiality: Linkerd with FIPS build (required)
   # Uses BoringSSL-FIPS (Certificate #2964) for automatic pod-to-pod mTLS
   # Install FIPS build: https://linkerd.io/2.15/features/fips/
-  # Alternative: Application-level mTLS (see appLevelMTLS below)
+  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
   mtls:
-    enabled: false  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
-  # Application-level mTLS (alternative to service mesh)
-  # Use cert-manager to issue FIPS-compliant certificates per-app
-  # Harder to manage but no sidecar overhead
-  appLevelMTLS:
     enabled: false
-    issuerName: "fedramp-fips-ca"  # ClusterIssuer for service certificates
   # Enforce FIPS 140-2 cipher suites via Kyverno policies
   enforceFIPS:
     enabled: false

@@ -1,6 +1,48 @@
 # turnkey
 
-Turnkey is the platform baseline for provisioning and bootstrapping Kubernetes clusters with Pulumi and Argo CD.
+Turnkey is a **template repository** for provisioning and bootstrapping production-grade, FedRAMP-aligned Kubernetes clusters with Pulumi and Argo CD.
+
+> **Using turnkey in your organisation?** Do not fork — use it as a GitHub template. See [Using turnkey as a Template](#using-turnkey-as-a-template) below.
+
+## Using turnkey as a Template
+
+Turnkey is designed to be adopted via GitHub's **"Use this template"** feature, not forked. This gives you a clean, independent repo (no upstream link, private from creation) that you own and customise freely.
+
+### 1. Create your repo from the template
+
+On GitHub, click **"Use this template" → "Create a new repository"**. Choose a name, set visibility to **Private**, and create it.
+
+### 2. Set your repo URL
+
+Every stack config in `stacks/` and `pulumi/Pulumi.*.yaml` has a single line to change:
+
+```yaml
+argocd.repoUrl: https://github.com/your-org/your-repo
+```
+
+This value controls everything: where ArgoCD pulls from, which source repo the `platform` AppProject trusts, and what gets referenced in change-control annotations. It is the only URL you need to update.
+
+### 3. Customise your stacks
+
+Edit the stack configs under `stacks/` for your environments (cluster size, region, feature flags, etc.). The rest of the platform picks up from there.
+
+### 4. Bootstrap
+
+Follow the normal bootstrap procedure in [docs/runbooks/bootstrap.md](docs/runbooks/bootstrap.md).
+
+### Staying up to date with upstream
+
+Since your repo has no upstream link, pull upstream changes manually:
+
+```bash
+git remote add upstream https://github.com/EpykLab/turnkey
+git fetch upstream
+git merge upstream/master
+```
+
+Review the diff carefully before merging — upstream changes may conflict with your customisations.
+
+---
 
 ## Repository layout
 
@@ -167,18 +209,21 @@ Turnkey includes implementations for FedRAMP security controls (NIST SP 800-53 R
 | **SC-8** | Transmission Encryption | Linkerd FIPS mTLS (recommended) | See below |
 | **SI-4** | System Monitoring | Falco runtime security | `falco.enabled: true` |
 
-### SC-8: FIPS 140-2 Validated mTLS (⚠️ Important)
+### SC-8: FIPS 140-2 Validated mTLS (⚠️ Required)
 
-FedRAMP requires **FIPS 140-2 validated cryptography**. **WireGuard is NOT acceptable** (uses ChaCha20-Poly1305 which is not FIPS validated).
+FedRAMP requires **FIPS 140-2 validated cryptography**. Turnkey uses **Linkerd with its FIPS build** as the sole mTLS mechanism. There is no fallback — if Linkerd is not running, pod-to-pod traffic is blocked by policy rather than silently left unencrypted.
 
-**RECOMMENDED: Linkerd with FIPS Build**
+**Setup:**
 
-```yaml
-# 1. First, install Linkerd FIPS build
+```bash
+# 1. Install Linkerd FIPS build before enabling in values
 # https://linkerd.io/2.15/features/fips/
 linkerd install --set proxy.image.version=<fips-tag> | kubectl apply -f -
+linkerd check
+```
 
-# 2. Enable in turnkey values.yaml
+```yaml
+# 2. Enable in your stack values overlay
 linkerd:
   enabled: true
   fips:
@@ -189,47 +234,42 @@ fedramp:
     enabled: true
 ```
 
-**Why Linkerd?**
-- ✅ **Lightweight**: Rust-based proxies, ~1ms overhead (vs Istio's ~5-10ms)
-- ✅ **Simple**: Easier to operate and audit for FedRAMP
-- ✅ **Purpose-built**: mTLS is the primary use case
-- ✅ **FIPS validated**: Uses BoringSSL-FIPS (Certificate #2964)
+Linkerd's internal CA issues short-lived certs to each proxy automatically. No external HSM or cert-manager involvement is needed for pod-to-pod mTLS.
 
-**Alternative: Application-Level mTLS**
-If you cannot deploy a service mesh, use cert-manager with FIPS-compliant certificates per-application (harder to manage but no sidecars).
-
-**NOT RECOMMENDED: Istio**
-We do not recommend Istio for turnkey unless you need advanced features like traffic splitting or WASM filters. Istio's complexity makes FedRAMP compliance significantly harder.
-       enabled: true
-   ```
-
-2. **Istio with FIPS mode** (Full-featured)
-   ```yaml
-   istio:
-     enabled: true
-     fips:
-       enabled: true
-   fedramp:
-     mtls:
-       mode: "istio"
-       enabled: true
-   ```
-
-3. **Application-level mTLS** (cert-manager + FIPS libraries)
-   ```yaml
-   fedramp:
-     appLevelMTLS:
-       enabled: true
-       issuerName: "fedramp-fips-ca"
-   ```
+**Why Linkerd only?**
+- BoringSSL-FIPS (Certificate #2964) — the only validated crypto path
+- ~1ms overhead vs Istio's ~5-10ms
+- Automatic, transparent mTLS via sidecar injection
+- Kyverno enforces injection is present in FedRAMP namespaces — no silent opt-out
 
 See [docs/compliance-control-mapping.md](docs/compliance-control-mapping.md) for complete FedRAMP implementation details.
 
 ## Extending the Platform
 
+### Trust model: platform vs tenant
+
+Turnkey uses two ArgoCD AppProjects to separate trusted platform components from tenant workloads:
+
+| Project | Source repos | Cluster-scoped resources | Used for |
+|---------|-------------|--------------------------|----------|
+| `platform` | Your turnkey repo only | Unrestricted | All turnkey infrastructure |
+| `tenant` | Any repo | Blocked (`ClusterPolicy`, `ClusterRole`, `ClusterRoleBinding`, CRDs, webhooks) | Your workloads |
+
+Additional applications added via `additionalApps` use the `tenant` project by default. This means they cannot deploy cluster-scoped security resources — which is intentional. If a workload legitimately needs a `ClusterPolicy` or `ClusterRole`, it must be added to the turnkey repo directly (PR = change control).
+
+### Change control for security resources
+
+Any `ClusterPolicy` in the cluster must carry a `turnkey.io/change-control` annotation referencing the PR or ticket that approved it. Kyverno enforces this — unannotated ClusterPolicies are rejected.
+
+The workflow:
+1. Open a PR to your turnkey repo describing the need
+2. Add the resource with `turnkey.io/change-control: "<pr-url>"`
+3. Merge after review — the PR is the change control record
+4. ArgoCD syncs via the `platform` project
+
 ### Additional Applications
 
-You can deploy custom Helm charts or Kubernetes manifests from external repositories alongside the platform baseline. Configure via Pulumi:
+Deploy custom Helm charts or Kubernetes manifests from any repository alongside the platform baseline:
 
 ```bash
 pulumi config set turnkey:additionalApps '[
@@ -245,11 +285,7 @@ pulumi config set turnkey:additionalApps '[
 ]'
 ```
 
-**Use cases:**
-- Deploy your Tekton pipelines from a separate repo
-- Seed Kargo stages and promotions at build time
-- Include custom monitoring dashboards
-- Deploy team-specific applications
+These deploy into the `tenant` AppProject. They can manage namespace-scoped resources freely but cannot create cluster-scoped security resources.
 
 See `docs/runbooks/additional-applications.md` for complete configuration options.
 

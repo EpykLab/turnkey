@@ -61,6 +61,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-sc8-require-linkerd-mesh
   annotations:
+    turnkey.io/change-control: {{ .Values.argocd.repoUrl | quote }}
     policies.kyverno.io/title: Require Linkerd Mesh for SC-8
     policies.kyverno.io/category: FedRAMP SC-8
     policies.kyverno.io/subject: Deployment,StatefulSet,DaemonSet
@@ -101,118 +102,6 @@ spec:
                   linkerd.io/inject: "enabled"
 {{- end }}
 
-# ============================================================================
-# Application-Level mTLS with FIPS 140-2 (Alternative to Service Mesh)
-# ============================================================================
-# Use if you cannot deploy Linkerd but still need FIPS 140-2 mTLS
-# Each application manages its own certificates via cert-manager
-# Harder to manage than service mesh but no sidecar overhead
-{{- if .Values.fedramp.appLevelMTLS.enabled }}
----
-# ClusterIssuer with FIPS 140-2 validated key generation
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: {{ .Values.fedramp.appLevelMTLS.issuerName }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "8"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  labels:
-    fedramp.turnkey.io/control: "SC-8"
-    fedramp.turnkey.io/fips-140-2: "validated"
-    app.kubernetes.io/part-of: "turnkey-fedramp"
-spec:
-  selfSigned: {}
-  # For production FedRAMP, use external CA with FIPS 140-2 validated HSM
-  # ca:
-  #   secretName: fedramp-fips-ca
-  #   # HSM-backed CA for production
----
-# Certificate for service-to-service mTLS with FIPS settings
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: fedramp-sc8-service-mtls-fips
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "8"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  labels:
-    fedramp.turnkey.io/control: "SC-8"
-    fedramp.turnkey.io/fips-140-2: "validated"
-    app.kubernetes.io/part-of: "turnkey-fedramp"
-spec:
-  secretName: service-mtls-cert-fips
-  issuerRef:
-    name: {{ .Values.fedramp.appLevelMTLS.issuerName }}
-    kind: ClusterIssuer
-  # FIPS 140-2 key usage
-  usages:
-    - digital signature
-    - key encipherment
-    - server auth
-    - client auth
-  dnsNames:
-    - "{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local"
-  # FIPS 140-2 approved key algorithms
-  privateKey:
-    algorithm: ECDSA
-    size: 256  # P-256 curve (FIPS approved)
-    encoding: PKCS8
-  # FedRAMP requires certificate rotation (max 90 days)
-  renewBefore: 720h  # 30 days before expiry
-  duration: 2160h    # 90 days
-  # Subject fields for identification
-  subject:
-    organizations:
-      - "Stellarbridge FedRAMP"
-    organizationalUnits:
-      - "{{ .Release.Namespace }}"
-    countries:
-      - "US"
----
-# ConfigMap documenting FIPS 140-2 requirements for applications
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: fedramp-sc8-fips-requirements
-  namespace: {{ .Release.Namespace }}
-  labels:
-    fedramp.turnkey.io/control: "SC-8"
-    fedramp.turnkey.io/fips-140-2: "application-level"
-    app.kubernetes.io/part-of: "turnkey-fedramp"
-data:
-  requirements: |
-    SC-8 FIPS 140-2 Application Requirements (Application-Level mTLS):
-    
-    1. Use ONLY FIPS 140-2 validated cryptographic modules:
-       - OpenSSL FIPS Module (Certificate #1051)
-       - BoringSSL FIPS (Certificate #2964)
-       - AWS LibCrypto (Certificate #4753)
-    
-    2. Approved Algorithms ONLY:
-       - Encryption: AES-128-GCM, AES-256-GCM (NO ChaCha20)
-       - Key Exchange: ECDHE with P-256, P-384 curves
-       - Signatures: ECDSA with P-256, P-384 curves
-       - Hashing: SHA-256, SHA-384, SHA-512
-       - MAC: HMAC-SHA256, HMAC-SHA384
-    
-    3. TLS Configuration:
-       - Minimum TLS 1.2 (TLS 1.3 allowed)
-       - Cipher suites: ECDHE-*-AES*-GCM-SHA*
-       - NO: RC4, DES, 3DES, MD5, SHA-1, RSA < 2048
-    
-    4. Certificate Requirements:
-       - ECDSA P-256 or P-384 keys (NOT RSA unless 2048+)
-       - SHA-256 or stronger signature algorithm
-       - Maximum validity: 90 days (FedRAMP requirement)
-       - Automatic rotation via cert-manager
-    
-    5. Evidence:
-       - Certificate chain validation
-       - TLS handshake logs showing FIPS suites
-       - Certificate transparency logs
-{{- end }}
 
 # ============================================================================
 # Kyverno Policy: Enforce FIPS 140-2 Cipher Suites
@@ -225,6 +114,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-sc8-enforce-fips-ciphers
   annotations:
+    turnkey.io/change-control: {{ .Values.argocd.repoUrl | quote }}
     argocd.argoproj.io/sync-wave: "26"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     policies.kyverno.io/title: Enforce FIPS 140-2 Cipher Suites
@@ -266,6 +156,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-sc8-block-non-fips-ciphers
   annotations:
+    turnkey.io/change-control: {{ .Values.argocd.repoUrl | quote }}
     argocd.argoproj.io/sync-wave: "26"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     policies.kyverno.io/title: Block Non-FIPS TLS Configuration

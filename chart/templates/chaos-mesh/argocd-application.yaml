@@ -8,7 +8,7 @@ metadata:
     # After cert-manager (Kargo webhook TLS) and core networking; before status page smoke.
     argocd.argoproj.io/sync-wave: "38"
 spec:
-  project: default
+  project: platform
   source:
     repoURL: https://charts.chaos-mesh.org
     chart: chaos-mesh

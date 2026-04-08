@@ -4,6 +4,22 @@
 
 Provision a new Turnkey cluster from zero to Argo-managed steady state.
 
+## Before you bootstrap: set up your repo
+
+If you are adopting turnkey for your organisation, create your own repo from the template **before** running any Pulumi commands. Do not fork.
+
+1. On GitHub, open `EpykLab/turnkey` and click **"Use this template" → "Create a new repository"**
+2. Set visibility to **Private** and create it
+3. Clone your new repo locally
+4. In every stack config file you plan to use (`stacks/<env>.yaml` and `pulumi/Pulumi.<env>.yaml`), change:
+   ```yaml
+   argocd.repoUrl: https://github.com/your-org/your-repo
+   ```
+   This is the only URL you need to change. It controls ArgoCD's source, the AppProject trust boundary, and change-control annotations.
+5. Commit and push to your repo — ArgoCD will pull from here on bootstrap
+
+You are now ready to bootstrap.
+
 ## Prerequisites
 
 - DigitalOcean account with API token (for DOKS; for local **kind**, see [kind-local.md](kind-local.md) instead)

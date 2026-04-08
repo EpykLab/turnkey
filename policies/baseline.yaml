@@ -1,8 +1,13 @@
 # Plain manifests (no Helm). Applied as Argo CD second source after Kyverno chart (see chart/templates/kyverno/argocd-application.yaml).
+# Fork note: the turnkey.io/change-control annotations below are informational references.
+# They will still show the upstream URL after forking — this is intentional (provenance tracking).
+# The Kyverno enforcement only checks that the annotation exists, not its value.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: disallow-privileged
+  annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
 spec:
   validationFailureAction: Enforce
   background: true
@@ -51,6 +56,8 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: require-resources-and-probes
+  annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
 spec:
   validationFailureAction: Enforce
   background: true
@@ -139,8 +146,10 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: image-hygiene
+  annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: no-latest-tag

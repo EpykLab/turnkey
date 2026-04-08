@@ -37,7 +37,7 @@ func ApplyAdditionalApplications(ctx *pulumi.Context, k8s *kubernetes.Provider, 
 func applyAdditionalApplication(ctx *pulumi.Context, k8s *kubernetes.Provider, argocdRelease pulumi.Resource, app AdditionalAppConfig) error {
 	// Set defaults
 	if app.Project == "" {
-		app.Project = "default"
+		app.Project = "tenant"
 	}
 	if app.SyncWave == "" {
 		app.SyncWave = "50" // Default middle wave, after platform (30) but before status page (100)

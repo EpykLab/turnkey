@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#/usr/bin/env bash
 # One-shot: provision DOKS + Argo bootstrap + wait for core sync gates (no prompts).
 # Run from your machine (not from a restricted CI sandbox): needs outbound access to api.digitalocean.com.
 #
@@ -42,6 +42,12 @@ fi
 
 cd "${PULUMI_DIR}"
 
+if [[ -z "${PULUMI_CONFIG_PASSPHRASE:-}" && -z "${PULUMI_CONFIG_PASSPHRASE_FILE:-}" ]]; then
+	read -r -s -p "Enter your Pulumi config passphrase: " PULUMI_CONFIG_PASSPHRASE
+	echo ""
+	export PULUMI_CONFIG_PASSPHRASE
+fi
+
 echo "==> Warming Go build (first compile can take minutes with no Pulumi output)"
 go build -o /tmp/turnkey-pulumi-langhost .
 
@@ -68,7 +74,7 @@ else
 	pulumi up --yes --skip-preview
 fi
 
-KUBECONFIG_RAW="$(pulumi stack output kubeconfig --show-secrets -j 2>/dev/null | jq -r '.' 2>/dev/null || true)"
+KUBECONFIG_RAW="$(pulumi stack output kubeconfig --show-secrets 2>/dev/null || true)"
 if [[ -z "${KUBECONFIG_RAW}" || "${KUBECONFIG_RAW}" == "null" ]]; then
 	echo "WARN: kubeconfig stack output missing; skipping kubectl waits."
 	exit 0

@@ -1,5 +1,8 @@
 # FedRAMP AC-2: Account Management Controls
 # Kyverno policies for automated ServiceAccount lifecycle management
+# Fork note: the turnkey.io/change-control annotations below are informational references.
+# They will still show the upstream URL after forking — this is intentional (provenance tracking).
+# The Kyverno enforcement only checks that the annotation exists, not its value.
 ---
 # AC-2(3): Disable inactive accounts after 90 days
 apiVersion: kyverno.io/v1
@@ -7,6 +10,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-ac2-disable-inactive-accounts
   annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
     policies.kyverno.io/title: Disable Inactive Accounts
     policies.kyverno.io/category: FedRAMP AC-2
     policies.kyverno.io/subject: ServiceAccount
@@ -55,6 +59,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-ac2-audit-account-changes
   annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
     policies.kyverno.io/title: Audit Account Changes
     policies.kyverno.io/category: FedRAMP AC-2
     policies.kyverno.io/subject: ServiceAccount
@@ -86,6 +91,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-ac2-require-approval-annotation
   annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
     policies.kyverno.io/title: Require Approval for Account Creation
     policies.kyverno.io/category: FedRAMP AC-2
     policies.kyverno.io/subject: ServiceAccount
@@ -134,6 +140,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-ac2-require-rbac-review
   annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
     policies.kyverno.io/title: Require RBAC Review
     policies.kyverno.io/category: FedRAMP AC-2
     policies.kyverno.io/subject: ServiceAccount,Role,RoleBinding
@@ -171,6 +178,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-ac2-cleanup-unused-tokens
   annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
     policies.kyverno.io/title: Flag Unused Token Secrets
     policies.kyverno.io/category: FedRAMP AC-2
     policies.kyverno.io/subject: Secret
@@ -208,6 +216,7 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-ac2-require-group-membership
   annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
     policies.kyverno.io/title: Require Group Membership Documentation
     policies.kyverno.io/category: FedRAMP AC-2
     policies.kyverno.io/subject: RoleBinding,ClusterRoleBinding
@@ -237,13 +246,14 @@ kind: ClusterPolicy
 metadata:
   name: fedramp-ac2-shared-account-identification
   annotations:
+    turnkey.io/change-control: "https://github.com/EpykLab/turnkey"
     policies.kyverno.io/title: Shared Account Identification
     policies.kyverno.io/category: FedRAMP AC-2
     policies.kyverno.io/subject: ServiceAccount
     policies.kyverno.io/description: >-
       AC-2(10): Requires identification of shared or group ServiceAccounts.
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: identify-shared-accounts

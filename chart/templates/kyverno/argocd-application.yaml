@@ -7,7 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
-  project: default
+  project: platform
   source:
     repoURL: https://kyverno.github.io/kyverno/
     chart: kyverno
@@ -47,7 +47,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "25"
 spec:
-  project: default
+  project: platform
   source:
     repoURL: {{ .Values.argocd.repoUrl | quote }}
     path: policies

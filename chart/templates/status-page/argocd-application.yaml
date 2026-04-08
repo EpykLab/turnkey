@@ -8,7 +8,7 @@ metadata:
     # After Kyverno and policies (waves 5 / 25); surfaces only when the rest of the platform is in place.
     argocd.argoproj.io/sync-wave: "100"
 spec:
-  project: default
+  project: platform
   source:
     repoURL: {{ .Values.argocd.repoUrl | quote }}
     path: deploy/status-page

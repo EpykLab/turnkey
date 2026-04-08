@@ -7,7 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "85"
 spec:
-  project: default
+  project: platform
   source:
     repoURL: {{ .Values.argocd.repoUrl | quote }}
     targetRevision: {{ .Values.argocd.targetRevision | quote }}

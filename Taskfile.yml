@@ -56,3 +56,9 @@ tasks:
     silent: true
     cmds:
       - kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d
+  login:argocd:
+    cmds:
+      - |
+        argocd login localhost:8989 --insecure \
+          --username admin \
+          --password $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d)

@@ -16,6 +16,7 @@ spec:
       labels:
         app.kubernetes.io/name: hello-placeholder
     spec:
+      serviceAccountName: hello-placeholder
       securityContext:
         runAsNonRoot: true
       containers:

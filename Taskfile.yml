@@ -27,14 +27,17 @@ tasks:
       - cd pulumi/ && pulumi stack output kubeconfig --show-secrets > ~/.kube/config
 
   deploy:
+    silent: true
     cmds:
       - scripts/deploy-$PLATFORM.sh
 
   destroy:
+    silent: true
     cmds:
       - scripts/destroy-$PLATFORM.sh
 
   refresh:
+    silent: true
     cmds:
       - scripts/refresh-$PLATFORM.sh
 

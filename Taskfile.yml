@@ -6,6 +6,26 @@ env:
   PLATFORM: "doks"
 
 tasks:
+  pulumi:stack:init:
+    desc: Generate and store a new Pulumi state encryption password
+    silent: true
+    cmds:
+      - |
+        read -s -p "New encryption password: " PULUMI_CONFIG_PASSPHRASE
+        echo
+
+        read -p "Stack name: " PULUMI_STACK_NAME
+        echo
+        export PULUMI_STACK_NAME
+        export PULUMI_CONFIG_PASSPHRASE
+
+        cd pulumi && pulumi stack init $PULUMI_STACK_NAME
+
+  pulumi:password:rotate:
+    desc: Rotate the Pulumi state encryption password
+    silent: true
+    cmds:
+      - cd pulumi && pulumi stack change-secrets-provider passphrase
   show-kubecfg:
     desc: Show the kubeconfig
     cmds:

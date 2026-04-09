@@ -50,8 +50,13 @@ tasks:
     cmds:
       - kubectl port-forward svc/kargo-api -n kargo 8888:443
   access:argo:
+    silent: true
     cmds:
       - kubectl port-forward svc/argocd-server -n argocd 8989:443
+  access:tekton:
+    silent: true
+    cmds:
+      - kubectl port-forward -n tekton-pipelines svc/tekton-dashboard 9097:9097
   secrets:argocd:
     silent: true
     cmds:
@@ -62,3 +67,175 @@ tasks:
         argocd login localhost:8989 --insecure \
           --username admin \
           --password $(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d)
+
+  secrets:argocd-repo:
+    desc: Create the ArgoCD repository credential for private stllr-infra access
+    silent: true
+    cmds:
+      - |
+        echo "Opening GitHub — create a classic PAT with 'repo' scope (read-only is enough)."
+        echo "The scope and description are pre-filled."
+        echo ""
+        xdg-open "https://github.com/settings/tokens/new?description=stllr-argocd-repo&scopes=repo" 2>/dev/null &
+        sleep 2
+        read -p  "GitHub username:    " GH_USER
+        read -s  -p "Personal access token: " GH_TOKEN
+        echo ""
+        if [ -z "$GH_USER" ] || [ -z "$GH_TOKEN" ]; then
+          echo "Error: both values are required." >&2
+          exit 1
+        fi
+        kubectl create secret generic stllr-infra-repo \
+          -n argocd \
+          --from-literal=type=git \
+          --from-literal=url=https://github.com/EpykLab/stllr-infra \
+          --from-literal=username="$GH_USER" \
+          --from-literal=password="$GH_TOKEN" \
+          --save-config --dry-run=client -o yaml \
+        | kubectl label --local -f - argocd.argoproj.io/secret-type=repository --dry-run=client -o yaml \
+        | kubectl apply -f -
+        echo "Done. ArgoCD will now be able to pull from EpykLab/stllr-infra."
+
+  secrets:kargo-git:
+    desc: Create the Kargo git credential for committing image tag updates to stllr-infra
+    silent: true
+    cmds:
+      - |
+        echo "Opening GitHub — create a classic PAT with 'repo' scope (read + write)."
+        echo "Kargo needs push access to commit promoted image tags."
+        echo ""
+        xdg-open "https://github.com/settings/tokens/new?description=stllr-kargo-git&scopes=repo" 2>/dev/null &
+        sleep 2
+        read -p  "GitHub username:       " GH_USER
+        read -s  -p "Personal access token: " GH_TOKEN
+        echo ""
+        if [ -z "$GH_USER" ] || [ -z "$GH_TOKEN" ]; then
+          echo "Error: both values are required." >&2
+          exit 1
+        fi
+        kubectl create secret generic stllr-infra-git \
+          -n stllr \
+          --from-literal=type=https \
+          --from-literal=url=https://github.com/EpykLab/stllr-infra \
+          --from-literal=username="$GH_USER" \
+          --from-literal=password="$GH_TOKEN" \
+          --save-config --dry-run=client -o yaml \
+        | kubectl label --local -f - kargo.akuity.io/secret-type=repository --dry-run=client -o yaml \
+        | kubectl apply -f -
+        echo "Done. Kargo can now commit promoted image tags to EpykLab/stllr-infra."
+
+  secrets:kargo-ghcr:
+    desc: Create the Kargo image registry credential for discovering new ghcr.io image tags
+    silent: true
+    cmds:
+      - |
+        echo "Opening GitHub — create a classic PAT with 'read:packages' scope."
+        echo "Kargo needs this to poll ghcr.io for new image tags."
+        echo ""
+        xdg-open "https://github.com/settings/tokens/new?description=stllr-kargo-ghcr&scopes=read%3Apackages" 2>/dev/null &
+        sleep 2
+        read -p  "GitHub username:       " GH_USER
+        read -s  -p "Personal access token: " GH_TOKEN
+        echo ""
+        if [ -z "$GH_USER" ] || [ -z "$GH_TOKEN" ]; then
+          echo "Error: both values are required." >&2
+          exit 1
+        fi
+        kubectl create secret docker-registry ghcr-credentials \
+          -n stllr \
+          --docker-server=ghcr.io \
+          --docker-username="$GH_USER" \
+          --docker-password="$GH_TOKEN" \
+          --save-config --dry-run=client -o yaml \
+        | kubectl label --local -f - kargo.akuity.io/secret-type=image --dry-run=client -o yaml \
+        | kubectl apply -f -
+        echo "Done. Kargo can now discover new image tags in ghcr.io/epyklab."
+
+  secrets:eso-1password:
+    desc: Create the onepassword-connect-token Secret for ESO 1Password Connect auth
+    silent: true
+    cmds:
+      - |
+        echo "How would you like to provide the Connect token?"
+        echo "  1) Generate via op CLI (op connect token create)"
+        echo "  2) Paste an existing token"
+        read -p "Choose [1/2]: " TOKEN_CHOICE
+        echo ""
+
+        if [[ "$TOKEN_CHOICE" == "1" ]]; then
+          if ! command -v op &>/dev/null; then
+            echo "Error: op CLI not found. Install from https://developer.1password.com/docs/cli/get-started/"
+            exit 1
+          fi
+          read -p "Connect server name (as shown in op connect server list): " OP_SERVER
+          read -p "Vault name to scope the token to: " OP_VAULT
+          read -p "Token label (e.g. eso-turnkey-dev): " OP_LABEL
+          if [ -z "$OP_SERVER" ] || [ -z "$OP_VAULT" ] || [ -z "$OP_LABEL" ]; then
+            echo "Error: all fields are required." >&2
+            exit 1
+          fi
+          OP_TOKEN=$(op connect token create "$OP_LABEL" --server "$OP_SERVER" --vault "$OP_VAULT")
+          if [ -z "$OP_TOKEN" ]; then
+            echo "Error: token generation failed." >&2
+            exit 1
+          fi
+          echo "Token generated."
+        elif [[ "$TOKEN_CHOICE" == "2" ]]; then
+          read -s -p "1Password Connect token: " OP_TOKEN
+          echo ""
+          if [ -z "$OP_TOKEN" ]; then
+            echo "Error: token is required." >&2
+            exit 1
+          fi
+        else
+          echo "Error: choose 1 or 2." >&2
+          exit 1
+        fi
+
+        kubectl create secret generic onepassword-connect-token \
+          -n external-secrets \
+          --from-literal=token="$OP_TOKEN" \
+          --save-config \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "Done. Verify with: kubectl get secret onepassword-connect-token -n external-secrets"
+
+  secrets:eso-doppler:
+    desc: Create the doppler-eso-token Secret for ESO Doppler provider auth
+    silent: true
+    cmds:
+      - |
+        echo "Create a Doppler service token scoped to the project + config ESO will read from."
+        echo "Dashboard → Project → your-project → Access → Service Tokens → Generate."
+        echo ""
+        read -s -p "Doppler service token (dp.st.*): " DOPPLER_TOKEN
+        echo ""
+        if [ -z "$DOPPLER_TOKEN" ]; then
+          echo "Error: token is required." >&2
+          exit 1
+        fi
+        kubectl create secret generic doppler-eso-token \
+          -n external-secrets \
+          --from-literal=serviceToken="$DOPPLER_TOKEN" \
+          --save-config \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "Done. Verify with: kubectl get secret doppler-eso-token -n external-secrets"
+
+  secrets:eso-akv:
+    desc: Create the azure-keyvault-credentials Secret for ESO ServicePrincipal auth (non-AKS clusters)
+    silent: true
+    cmds:
+      - |
+        read -p "Azure Client ID (App ID): " CLIENT_ID
+        read -s -p "Azure Client Secret:      " CLIENT_SECRET
+        echo ""
+        if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+          echo "Error: both values are required." >&2
+          exit 1
+        fi
+        kubectl create secret generic azure-keyvault-credentials \
+          -n external-secrets \
+          --from-literal=client-id="$CLIENT_ID" \
+          --from-literal=client-secret="$CLIENT_SECRET" \
+          --save-config \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "Done. Verify with: kubectl get secret azure-keyvault-credentials -n external-secrets"

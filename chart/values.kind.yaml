@@ -38,6 +38,8 @@ doppler:
 
 tekton:
   enabled: true
+  dashboard:
+    enabled: true
 
 kargo:
   enabled: true
@@ -80,3 +82,19 @@ helloPlaceholder:
       namespace: tenant-hello-prod
       project: tenant
       kargoAuthorizedStage: "stllr:prod"
+    # stllr-infra: Kargo project, warehouse, and stages for image promotion.
+    - name: stllr-kargo-config
+      repoURL: https://github.com/EpykLab/stllr-infra
+      targetRevision: master
+      path: kargo
+      namespace: argocd
+      project: platform
+      syncWave: "56"
+    # stllr-infra: ApplicationSet that generates one ArgoCD Application per tenant.
+    - name: stllr-tenant-apps
+      repoURL: https://github.com/EpykLab/stllr-infra
+      targetRevision: master
+      path: argocd
+      namespace: argocd
+      project: platform
+      syncWave: "57"

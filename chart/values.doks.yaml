@@ -23,6 +23,11 @@ certManager:
 # NOTE: Disabled due to CRD annotation size limit (262144 bytes) - re-enable when fixed
 externalSecrets:
   enabled: false
+  azureKeyVault:
+      vaultUrl: https://your-vault-name.vault.azure.net
+      tenantId: your-azure-tenant-id
+      authType: WorkloadIdentity   # AKS with managed identity
+      # authType: ServicePrincipal  # DOKS or any non-AKS cluster
 
 # Gateway API controller + TLS not installed in baseline smoke test.
 caddyGateway:
@@ -39,6 +44,8 @@ doppler:
 
 tekton:
   enabled: true
+  dashboard:
+    enabled: true
 
 kargo:
   enabled: true
@@ -80,3 +87,19 @@ helloPlaceholder:
       namespace: tenant-hello-prod
       project: tenant
       kargoAuthorizedStage: "stllr:prod"
+    # stllr-infra: Kargo project, warehouse, and stages for image promotion.
+    - name: stllr-kargo-config
+      repoURL: https://github.com/EpykLab/stllr-infra
+      targetRevision: master
+      path: kargo
+      namespace: argocd
+      project: platform
+      syncWave: "56"
+    # stllr-infra: ApplicationSet that generates one ArgoCD Application per tenant.
+    - name: stllr-tenant-apps
+      repoURL: https://github.com/EpykLab/stllr-infra
+      targetRevision: master
+      path: argocd
+      namespace: argocd
+      project: platform
+      syncWave: "57"

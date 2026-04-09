@@ -37,6 +37,7 @@ spec:
                 - cert-manager
                 - ingress-nginx
                 - kargo
+                - stllr
                 - doppler-operator-system
                 - turnkey-compliance
       preconditions:
@@ -118,6 +119,7 @@ spec:
                 - cert-manager
                 - ingress-nginx
                 - kargo
+                - stllr
                 - doppler-operator-system
                 - turnkey-compliance
                 - turnkey-status

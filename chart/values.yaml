@@ -34,6 +34,35 @@ externalSecrets:
   namespace: external-secrets
   targetRevision: "2.0.1"
   helmValues: {}
+  # Azure Key Vault ClusterSecretStore — deployed alongside ESO when enabled.
+  # Tenants reference this store by name ("azure-keyvault") in their ExternalSecrets.
+  azureKeyVault:
+    # URL of the Key Vault instance (required when externalSecrets.enabled is true).
+    vaultUrl: ""
+    # Azure AD tenant ID.
+    tenantId: ""
+    # Authentication type: WorkloadIdentity (AKS) or ServicePrincipal (any cluster).
+    authType: WorkloadIdentity
+    # ServicePrincipal only: name of the Secret in externalSecrets.namespace containing
+    # client-id and client-secret keys. Create this Secret out-of-band before enabling.
+    authSecretName: azure-keyvault-credentials
+  # Doppler ClusterSecretStore — cloud-agnostic alternative to AKV (works on DOKS, EKS, etc.).
+  # Use instead of azureKeyVault on non-AKS clusters.
+  # Create the service token secret first: task secrets:eso-doppler
+  doppler:
+    enabled: false
+    # Name of the Secret in externalSecrets.namespace containing a `serviceToken` key.
+    authSecretName: doppler-eso-token
+  # 1Password ClusterSecretStore — requires a running 1Password Connect server.
+  # Create the connect token secret first: task secrets:eso-1password
+  onePassword:
+    enabled: false
+    # URL of your 1Password Connect server.
+    connectHost: ""
+    # Name of the vault in 1Password that holds tenant secrets.
+    vaultName: ""
+    # Name of the Secret in externalSecrets.namespace containing a `token` key.
+    authSecretName: onepassword-connect-token
 
 # CI / promotion (optional). DOKS overlay turns these on for full-stack dev clusters.
 tekton:
@@ -42,6 +71,8 @@ tekton:
     enabled: true
   triggers:
     enabled: true
+  dashboard:
+    enabled: false
 
 # OCI Helm chart (ghcr.io/akuity/kargo-charts). Dev-only admin credentials below — replace for real environments.
 kargo:

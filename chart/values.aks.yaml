@@ -19,6 +19,11 @@ certManager:
 
 externalSecrets:
   enabled: false
+  azureKeyVault:
+      vaultUrl: https://your-vault-name.vault.azure.net
+      tenantId: your-azure-tenant-id
+      authType: WorkloadIdentity   # AKS with managed identity
+      # authType: ServicePrincipal  # DOKS or any non-AKS cluster
 
 caddyGateway:
   hostname: turnkey.gov.stellarbridge.app

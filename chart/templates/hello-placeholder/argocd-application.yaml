@@ -12,11 +12,24 @@ metadata:
     kargo.akuity.io/authorized-stage: {{ .kargoAuthorizedStage | quote }}
     {{- end }}
 spec:
-  project: {{ .project | default "default" | quote }}
+  project: {{ .project | default "tenant" | quote }}
   source:
-    repoURL: {{ $.Values.helloPlaceholder.repoURL | default $.Values.argocd.repoUrl | quote }}
-    targetRevision: {{ $.Values.helloPlaceholder.targetRevision | default $.Values.argocd.targetRevision | quote }}
+    repoURL: {{ .repoURL | default $.Values.helloPlaceholder.repoURL | default $.Values.argocd.repoUrl | quote }}
+    targetRevision: {{ .targetRevision | default $.Values.helloPlaceholder.targetRevision | default $.Values.argocd.targetRevision | quote }}
     path: {{ .path | quote }}
+    {{- if or .helmValueFiles .helmValues }}
+    helm:
+      {{- if .helmValueFiles }}
+      valueFiles:
+        {{- range .helmValueFiles }}
+        - {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .helmValues }}
+      valuesObject:
+        {{- .helmValues | toYaml | nindent 8 }}
+      {{- end }}
+    {{- end }}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ .namespace | quote }}

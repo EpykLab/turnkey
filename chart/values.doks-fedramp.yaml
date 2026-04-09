@@ -39,6 +39,8 @@ doppler:
 
 tekton:
   enabled: true
+  dashboard:
+    enabled: false
 
 kargo:
   enabled: true

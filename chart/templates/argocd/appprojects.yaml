@@ -59,6 +59,10 @@ spec:
   destinations:
     - server: https://kubernetes.default.svc
       namespace: "*"
+  # Tenants may create Namespaces (required for CreateNamespace=true in ArgoCD sync options).
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
   # Cluster-scoped security resources are fully blocked for tenant apps.
   # If a tenant legitimately needs one of these, it must go through the
   # turnkey repo (platform project) with PR-based change control.

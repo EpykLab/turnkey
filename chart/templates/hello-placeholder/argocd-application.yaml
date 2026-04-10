@@ -45,5 +45,9 @@ spec:
         maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
+  {{- if .ignoreDifferences }}
+  ignoreDifferences:
+    {{- toYaml .ignoreDifferences | nindent 4 }}
+  {{- end }}
 {{- end }}
 {{- end }}

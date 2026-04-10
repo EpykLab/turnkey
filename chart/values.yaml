@@ -53,16 +53,24 @@ externalSecrets:
     enabled: false
     # Name of the Secret in externalSecrets.namespace containing a `serviceToken` key.
     authSecretName: doppler-eso-token
-  # 1Password ClusterSecretStore — requires a running 1Password Connect server.
-  # Create the connect token secret first: task secrets:eso-1password
+  # 1Password ClusterSecretStore — deploys 1Password Connect into the cluster automatically.
+  # Before enabling, seed credentials: task secrets:1password-connect-creds
+  # Then seed the ESO access token: task secrets:eso-1password
   onePassword:
     enabled: false
-    # URL of your 1Password Connect server.
+    # Override only if using an external Connect server. When empty, the in-cluster
+    # Connect service URL is derived automatically from connect.namespace.
     connectHost: ""
     # Name of the vault in 1Password that holds tenant secrets.
     vaultName: ""
     # Name of the Secret in externalSecrets.namespace containing a `token` key.
     authSecretName: onepassword-connect-token
+    connect:
+      # Namespace the Connect server is deployed into.
+      namespace: onepassword-connect
+      targetRevision: "1.15.0"
+      # Name of the Secret pre-created by: task secrets:1password-connect-creds
+      credentialsSecretName: op-credentials
 
 # CI / promotion (optional). DOKS overlay turns these on for full-stack dev clusters.
 tekton:

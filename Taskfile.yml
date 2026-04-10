@@ -178,6 +178,41 @@ tasks:
         | kubectl apply -f -
         echo "Done. Kargo can now discover new image tags in ghcr.io/epyklab."
 
+  secrets:1password-connect-creds:
+    desc: Seed 1Password Connect server credentials into the cluster (required before enabling onePassword in chart)
+    silent: true
+    cmds:
+      - |
+        echo "Paste the contents of your 1password-credentials.json file."
+        echo "(Download from 1Password.com → Integrations → Connect → your server → Save Credentials File)"
+        echo ""
+        read -p "Path to 1password-credentials.json (or press Enter to paste inline): " CREDS_PATH
+        echo ""
+
+        if [ -n "$CREDS_PATH" ]; then
+          if [ ! -f "$CREDS_PATH" ]; then
+            echo "Error: file not found: $CREDS_PATH" >&2
+            exit 1
+          fi
+          CREDS_JSON=$(cat "$CREDS_PATH")
+        else
+          echo "Paste JSON content and press Ctrl+D when done:"
+          CREDS_JSON=$(cat)
+        fi
+
+        if [ -z "$CREDS_JSON" ]; then
+          echo "Error: credentials JSON is required." >&2
+          exit 1
+        fi
+
+        kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create secret generic op-credentials \
+          -n onepassword-connect \
+          --from-literal=1password-credentials.json="$CREDS_JSON" \
+          --save-config \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "Done. Verify with: kubectl get secret op-credentials -n onepassword-connect"
+
   secrets:eso-1password:
     desc: Create the onepassword-connect-token Secret for ESO 1Password Connect auth
     silent: true

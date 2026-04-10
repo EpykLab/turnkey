@@ -22,14 +22,26 @@ spec:
   description: "Turnkey platform components. Source locked to the turnkey repo."
   sourceRepos:
     - {{ .Values.argocd.repoUrl | quote }}
+    {{- if .Values.helloPlaceholder.enabled }}
+    {{- $seen := list .Values.argocd.repoUrl }}
+    {{- range (.Values.helloPlaceholder.apps | default list) }}
+    {{- $url := .repoURL | default $.Values.helloPlaceholder.repoURL | default $.Values.argocd.repoUrl }}
+    {{- if and (eq (.project | default "tenant") "platform") (not (has $url $seen)) }}
+    - {{ $url | quote }}
+    {{- $seen = append $seen $url }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
     # Helm chart registries used by platform components
     - "https://kyverno.github.io/kyverno/"
     - "https://falcosecurity.github.io/charts"
     - "https://charts.jetstack.io"
     - "https://kubernetes.github.io/ingress-nginx"
     - "https://external-secrets.github.io/external-secrets/"
+    - "https://1password.github.io/connect-helm-charts/"
     - "https://argoproj.github.io/argo-helm"
     - "https://charts.kargo.run"
+    - "ghcr.io/akuity/kargo-charts"
     - "https://chaos-mesh.org/helm-charts"
     - "https://aquasecurity.github.io/helm-charts/"
     - "registry.digitalocean.com"

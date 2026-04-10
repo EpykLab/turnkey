@@ -45,18 +45,6 @@ Edit the stack configs under `stacks/` for your environments (cluster size, regi
 
 Follow the normal bootstrap procedure below.
 
-### Staying up to date with upstream
-
-Since your repo has no upstream link, pull upstream changes manually:
-
-```bash
-git remote add upstream https://github.com/EpykLab/turnkey
-git fetch upstream
-git merge upstream/master
-```
-
-Review the diff carefully before merging — upstream changes may conflict with your customisations.
-
 ---
 
 ## Prerequisites
@@ -100,7 +88,6 @@ config:
   argocd.repoUrl: https://github.com/EpykLab/turnkey   # ← must be your repo URL
   argocd.targetRevision: master
   argocd.path: bootstrap
-  features.kargo: "true"               # enable for full prod stack
 ```
 
 For a new DOKS cluster:
@@ -115,7 +102,6 @@ config:
   cluster.version: 1.35.1-do.2
   cluster.nodeCount: "1"
   cluster.nodeSize: s-4vcpu-8gb
-  features.kargo: "true"
 ```
 
 ### 1.2 Deploy the cluster
@@ -123,6 +109,7 @@ config:
 **Option A — automated (recommended):**
 
 ```bash
+task pulumi:stack:init
 task deploy
 ```
 
@@ -176,11 +163,24 @@ The `stllr-tenant` chart relies on a `ClusterSecretStore` named `onepassword`. T
 
 ```bash
 # Pre-install ESO CRDs
-kubectl apply -f https://raw.githubusercontent.com/external-secrets/external-secrets/main/deploy/crds/bundle.yaml
+# Use create (not apply) to avoid the 262 KB annotation size limit that apply triggers
+kubectl create -f https://raw.githubusercontent.com/external-secrets/external-secrets/main/deploy/crds/bundle.yaml
 kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=120s
 ```
 
-Enable ESO with 1Password in your chart values (commit and push — Argo CD will sync):
+#### Step 1: Seed the 1Password Connect server credentials
+
+The platform chart automatically deploys a 1Password Connect server into the cluster when `onePassword.enabled` is true. Before enabling it in values, seed the Connect server credentials secret:
+
+```bash
+task secrets:1password-connect-creds
+```
+
+This prompts you for the path to (or contents of) your `1password-credentials.json` file. Download it from **1Password.com → Integrations → Connect → your server → Save Credentials File**, then paste the path or contents when prompted.
+
+#### Step 2: Enable ESO with 1Password in your chart values
+
+Commit and push — Argo CD will sync and deploy the Connect server and ESO automatically:
 
 ```yaml
 # chart/values.yaml (or your environment overlay)
@@ -188,12 +188,12 @@ externalSecrets:
   enabled: true
   onePassword:
     enabled: true
-    connectHost: "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
     vaultName: "<your-1password-vault-name>"
-    authSecretName: onepassword-connect-token
 ```
 
-Then seed the 1Password Connect token into the cluster. Run this from the `turnkey` repo:
+> `connectHost` is no longer required — it is derived automatically from the in-cluster Connect service.
+
+#### Step 3: Seed the ESO access token
 
 ```bash
 task secrets:eso-1password
@@ -221,8 +221,10 @@ This opens GitHub in your browser with the `repo` (read-only) scope pre-selected
 Verify:
 
 ```bash
-kubectl exec -n argocd deployment/argocd-repo-server -- \
-  git ls-remote https://github.com/EpykLab/stllr-infra
+# Check the repo appears as Connected in the Argo CD UI: Settings → Repositories
+# For a CLI check, inspect the secret directly — the exec approach below does NOT work
+# for private repos because bare git doesn't use Argo CD's credential store.
+kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=repository
 ```
 
 ### 2.3 Configure Kargo credentials
@@ -512,11 +514,11 @@ Pre-install the CRDs manually before enabling ESO in the chart — see [Phase 2.
 ```bash
 # Check repo secret exists
 kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=repository
-
-# Test connectivity from the repo-server
-kubectl exec -n argocd deployment/argocd-repo-server -- \
-  git ls-remote https://github.com/EpykLab/stllr-infra
 ```
+
+> **Note:** `kubectl exec ... git ls-remote` does not work for private repos — bare git in the
+> container shell has no access to Argo CD's internal credential store. The authoritative check
+> is the Argo CD UI: **Settings → Repositories** should show the repo as **Connected**.
 
 ### ESO not syncing tenant secrets
 

@@ -247,6 +247,20 @@ task secrets:kargo-ghcr
 
 Opens GitHub with `read:packages` pre-selected. Writes `ghcr-credentials` into the `stllr` namespace with the required Kargo label.
 
+**Copy image pull credentials to tenant namespaces:**
+
+The `ghcr-credentials` secret is created in the `stllr` namespace for Kargo, but pods in tenant namespaces also need it to pull private images. Copy it to each tenant namespace after the namespace is created by ArgoCD:
+
+```bash
+for ns in tenant-hello-preview tenant-hello-demo tenant-hello-prod; do
+  kubectl get secret ghcr-credentials -n stllr -o json \
+    | python3 -c "import json,sys; s=json.load(sys.stdin); s['metadata']={'name':s['metadata']['name'],'namespace':'$ns'}; print(json.dumps(s))" \
+    | kubectl apply -f - 2>/dev/null || true
+done
+```
+
+> **Note:** Tenant workload deployments are disabled by default in tenant values files (e.g. `tenants/hello-demo/values.yaml`) until Kargo promotes real images. Once Kargo runs image promotion and updates the image tags, re-enable the workloads in the tenant values.
+
 ---
 
 ## Phase 3: Deploy the Stellarbridge Application Stack

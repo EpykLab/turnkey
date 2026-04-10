@@ -38,6 +38,18 @@ func InstallArgoCD(ctx *pulumi.Context, k8s *kubernetes.Provider) (*helmv3.Relea
 		Chart:   pulumi.String("argo-cd"),
 		Version: pulumi.String("7.7.16"),
 		Timeout: pulumi.Int(600),
+		Values: pulumi.Map{
+			// ESO (and some other operators) add .status fields to CRDs that are not
+			// declared in the OpenAPI schema. ArgoCD's structured-merge diff fails with
+			// "field not declared in schema" before it can apply per-Application
+			// ignoreDifferences. Stripping /status globally at the comparison stage
+			// prevents ComparisonError on any operator-managed CRD.
+			"configs": pulumi.Map{
+				"cm": pulumi.Map{
+					"resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition": pulumi.String("jsonPointers:\n  - /status\n"),
+				},
+			},
+		},
 	}, pulumi.Provider(k8s), pulumi.DependsOn([]pulumi.Resource{ns}))
 	if err != nil {
 		return nil, err

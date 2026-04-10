@@ -36,4 +36,11 @@ spec:
       - CreateNamespace=true
       # External Secrets CRDs are large and exceed annotation size limits
       - ServerSideApply=true
+  # ESO CRDs declare status sub-resources not present in the OpenAPI schema,
+  # causing ArgoCD's structured diff to fail. Ignore status on all CRDs.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /status
 {{- end }}

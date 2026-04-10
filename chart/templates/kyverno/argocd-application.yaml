@@ -21,10 +21,9 @@ spec:
         # Post-upgrade Job uses bitnami/kubectl; optional hook is unnecessary for greenfield installs and can fail image pulls.
         policyReportsCleanup:
           enabled: false
-        admissionController:
-          container:
-            extraArgs:
-              enablePolicyException: true
+        features:
+          policyExceptions:
+            enabled: true
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno

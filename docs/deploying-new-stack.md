@@ -509,6 +509,73 @@ metadata.annotations: Too long: may not be more than 262144 bytes
 
 Pre-install the CRDs manually before enabling ESO in the chart — see [Phase 2.1](#21-configure-the-secrets-backend-external-secrets-operator--azure-key-vault).
 
+### `turnkey-external-secrets` shows `Unknown` with ComparisonError
+
+```
+error building typed value from live resource: .status.terminatingReplicas: field not declared in schema
+```
+
+This is a known ArgoCD issue with large ESO CRDs that declare status sub-resources outside their OpenAPI schema. The chart includes `ignoreDifferences` for CRD status fields and `ServerSideApply=true` to handle this automatically. If the app shows `Unknown` after first sync, trigger a hard refresh:
+
+```bash
+kubectl annotate application turnkey-external-secrets -n argocd \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+### 1Password Connect server fails to start (`illegal base64 data`)
+
+```
+failed to credentialsDataFromBase64, illegal base64 data at input byte 0
+```
+
+The Connect server expects the credentials file mounted from the `op-credentials` secret to be **base64-encoded JSON**, not raw JSON. The `task secrets:1password-connect-creds` task handles this encoding automatically. If you seeded the secret manually or with an older version of the task, re-run:
+
+```bash
+task secrets:1password-connect-creds
+```
+
+To fix an existing secret without re-running the task:
+
+```bash
+RAW_JSON=$(kubectl get secret op-credentials -n onepassword-connect \
+  -o jsonpath='{.data.1password-credentials\.json}' | base64 -d)
+B64=$(printf '%s' "$RAW_JSON" | base64 -w 0)
+kubectl create secret generic op-credentials -n onepassword-connect \
+  --from-literal=1password-credentials.json="$B64" \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl rollout restart deployment/onepassword-connect -n onepassword-connect
+```
+
+### `default` ServiceAccount missing in platform namespace
+
+If a platform component namespace (e.g. `onepassword-connect`) was created before the Kyverno FedRAMP AC-2 policy excluded it, the Kubernetes service account controller may have been blocked from auto-creating the `default` SA. Symptoms: pods stuck in `FailedCreate` with `serviceaccount "default" not found`.
+
+```bash
+kubectl create serviceaccount default -n <namespace>
+kubectl rollout restart deployment/<name> -n <namespace>
+```
+
+This is a one-time bootstrap issue. The platform namespace exclusion list in `policies/fedramp-ac2-account-management.yaml` prevents recurrence on new clusters.
+
+### Kyverno `PolicyViolation` warnings in ArgoCD
+
+Events like `policy fedramp-ac2-audit-account-changes/audit-serviceaccount-changes fail` appear on ServiceAccounts and RoleBindings. These are **audit-only** (`validationFailureAction: Audit`) — they generate compliance trail events but do not block anything. They are intentional: the FedRAMP AC-2 controls require logging all account lifecycle events.
+
+### ApplicationSet `exclude` field type error
+
+```
+spec.generators[0].git.directories[0].exclude: Invalid value: "string": must be of type boolean
+```
+
+The ArgoCD ApplicationSet git generator `exclude` field is a boolean, not a path string. The correct syntax is a separate directory entry:
+
+```yaml
+directories:
+  - path: tenants/*
+  - path: tenants/_defaults
+    exclude: true   # ← boolean, on its own entry
+```
+
 ### Argo CD can't access stllr-infra
 
 ```bash
@@ -545,6 +612,15 @@ kubectl describe warehouse stllr-images -n stllr
 
 # Verify ghcr-credentials secret has the kargo label
 kubectl get secret ghcr-credentials -n stllr --show-labels
+```
+
+### Kargo Project shows OutOfSync (`spec.promotionPolicies` drift)
+
+The `spec.promotionPolicies` field in the Kargo `Project` CRD is deprecated. Auto-promotion is now configured at the Stage level via `spec.requestedFreight.sources.direct: true`. If your `project.yaml` still contains `promotionPolicies`, remove it — the field is ignored by the controller but causes an ArgoCD diff:
+
+```yaml
+# kargo/project.yaml — correct form
+spec: {}
 ```
 
 ### Namespace stuck terminating on destroy

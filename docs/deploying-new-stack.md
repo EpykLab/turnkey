@@ -623,6 +623,18 @@ The `spec.promotionPolicies` field in the Kargo `Project` CRD is deprecated. Aut
 spec: {}
 ```
 
+### Doppler `DopplerSecret` blocking platform health check
+
+If Doppler is enabled in values but no API key is configured, the `DopplerSecret` resource never becomes healthy and `turnkey-platform` sync will stall waiting for it. If you are using 1Password as your secrets backend, disable Doppler:
+
+```yaml
+# chart/values.doks.yaml (or your environment overlay)
+doppler:
+  enabled: false
+```
+
+Commit, push, and re-sync `turnkey-platform`.
+
 ### Namespace stuck terminating on destroy
 
 ```bash

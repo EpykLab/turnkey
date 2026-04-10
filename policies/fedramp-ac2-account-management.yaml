@@ -40,6 +40,7 @@ spec:
                 - stllr
                 - doppler-operator-system
                 - turnkey-compliance
+                - onepassword-connect
       preconditions:
         all:
           - key: "{{ request.operation }}"
@@ -126,6 +127,7 @@ spec:
                 - tekton-pipelines
                 - tekton-pipelines-resolvers
                 - external-secrets
+                - onepassword-connect
           - resources:
               annotations:
                 fedramp.turnkey.io/approved-by: "?*"

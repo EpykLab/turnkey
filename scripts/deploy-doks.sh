@@ -54,17 +54,28 @@ go build -o /tmp/turnkey-pulumi-langhost .
 echo "==> Selecting Pulumi stack: ${STACK}"
 pulumi stack select "${STACK}"
 
-# Keep Pulumi stack version aligned with stacks/<stack>.yaml (Pulumi.*.yaml is often gitignored).
+# Apply all config from stacks/<stack>.yaml to the Pulumi stack.
 STACK_FILE="${ROOT}/stacks/${STACK}.yaml"
+if [[ -f "${STACK_FILE}" ]]; then
+	echo "==> Applying config from ${STACK_FILE}"
+	# Parse every "  key: value" line under the config: block and set each as turnkey:<key>
+	while IFS= read -r line; do
+		# Match lines of the form: "  some.key: value" (indented, no leading #)
+		if [[ "${line}" =~ ^[[:space:]]+([A-Za-z][A-Za-z0-9_.]+):[[:space:]]+(.+)$ ]]; then
+			KEY="${BASH_REMATCH[1]}"
+			VAL="${BASH_REMATCH[2]}"
+			# Strip surrounding quotes if present
+			VAL="${VAL%\"}"
+			VAL="${VAL#\"}"
+			echo "    turnkey:${KEY}=${VAL}"
+			pulumi config set "turnkey:${KEY}" "${VAL}"
+		fi
+	done < "${STACK_FILE}"
+fi
+# Allow env override for cluster version after bulk apply
 if [[ -n "${DOKS_K8S_VERSION:-}" ]]; then
-	echo "==> Setting turnkey:cluster.version=${DOKS_K8S_VERSION} (from env)"
+	echo "==> Overriding turnkey:cluster.version=${DOKS_K8S_VERSION} (from env)"
 	pulumi config set turnkey:cluster.version "${DOKS_K8S_VERSION}"
-elif [[ -f "${STACK_FILE}" ]]; then
-	VER="$(awk '/^[[:space:]]*cluster.version:/{print $2}' "${STACK_FILE}" | head -1)"
-	if [[ -n "${VER}" ]]; then
-		echo "==> Setting turnkey:cluster.version=${VER} (from ${STACK_FILE})"
-		pulumi config set turnkey:cluster.version "${VER}"
-	fi
 fi
 
 echo "==> pulumi up --yes --skip-preview"

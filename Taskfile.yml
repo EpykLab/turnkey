@@ -178,6 +178,32 @@ tasks:
         | kubectl apply -f -
         echo "Done. Kargo can now discover new image tags in ghcr.io/epyklab."
 
+  secrets:stllr-stages-verify:
+    desc: Check ExternalSecret and tenant-secrets for Kargo stage namespaces (app runtime secrets, not Kargo git/ghcr)
+    cmds:
+      - |
+        set -e
+        NS_LIST="${STAGE_NS:-stllr-preview stllr-demo}"
+        echo "Checking namespaces: $NS_LIST"
+        echo "(Set STAGE_NS='ns1 ns2' to override, e.g. tenant-hello-preview tenant-hello-demo)"
+        echo ""
+        for ns in $NS_LIST; do
+          echo "=== namespace: $ns ==="
+          if ! kubectl get namespace "$ns" &>/dev/null; then
+            echo "  SKIP: namespace does not exist yet (Argo CD may not have synced)."
+            echo ""
+            continue
+          fi
+          if kubectl get externalsecret tenant-secrets -n "$ns" &>/dev/null; then
+            kubectl get externalsecret tenant-secrets -n "$ns" -o wide
+            kubectl get secret tenant-secrets -n "$ns" &>/dev/null && echo "  tenant-secrets Secret: present" || echo "  tenant-secrets Secret: MISSING (ESO not synced?)"
+          else
+            echo "  No ExternalSecret tenant-secrets (hello-placeholder-only namespace, or chart not deployed yet)."
+          fi
+          echo ""
+        done
+        echo "1Password / AKV item names follow stllr-<namespace> (e.g. stllr-stllr-preview). Create via: cd stllr-infra && task secrets:tenant"
+
   secrets:1password-connect-creds:
     desc: Seed 1Password Connect server credentials into the cluster (required before enabling onePassword in chart)
     silent: true
@@ -205,10 +231,14 @@ tasks:
           exit 1
         fi
 
+        # 1Password Connect server reads the credentials file and base64-decodes it.
+        # So the file content stored in the secret must itself be base64-encoded JSON.
+        CREDS_B64=$(printf '%s' "$CREDS_JSON" | base64 -w 0)
+
         kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
         kubectl create secret generic op-credentials \
           -n onepassword-connect \
-          --from-literal=1password-credentials.json="$CREDS_JSON" \
+          --from-literal=1password-credentials.json="$CREDS_B64" \
           --save-config \
           --dry-run=client -o yaml | kubectl apply -f -
         echo "Done. Verify with: kubectl get secret op-credentials -n onepassword-connect"

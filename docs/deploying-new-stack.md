@@ -267,6 +267,49 @@ done
 
 With the platform healthy and credentials in place, wire turnkey to pull the application stack from `stllr-infra`.
 
+### 3.0 Application secrets for Kargo stages (full `stllr-tenant` stack only)
+
+Phase 2.3 configures **Kargo** (git push + ghcr poll). That is **not** the same as **application runtime secrets** (database, Auth0, Redis, etc.).
+
+| Concern | What it unlocks | Where it lives |
+|---|---|---|
+| Kargo git + ghcr secrets | Warehouse discovers tags; stages can commit image bumps to `stllr-infra` | Kubernetes Secrets in namespace `stllr`, labeled for Kargo |
+| App secrets (ESO) | Pods start with env vars; avoids CrashLoop on missing DB/Auth0/etc. | One vault item **per Kubernetes namespace**, name `stllr-<namespace>` |
+
+**When this applies:** The default **hello-placeholder** overlays are nginx-only; they do **not** need `tenant-secrets` or ESO. As soon as you point preview/demo Applications at the **`charts/stllr-tenant`** chart—typically via `environments/preview` and `environments/demo` in `stllr-infra`—you must provision app secrets **before** those workloads can run.
+
+**Naming (same convention for Azure Key Vault or 1Password):** the `ExternalSecret` in `stllr-tenant` requests remote key `stllr-<k8s-namespace>`. Examples:
+
+| Kubernetes namespace | Vault item / AKV secret name |
+|---|---|
+| `stllr-preview` | `stllr-stllr-preview` |
+| `stllr-demo` | `stllr-stllr-demo` |
+| `tenant-hello-preview` | `stllr-tenant-hello-preview` |
+
+If you use different `namespace:` values under `helloPlaceholder.apps` in your chart overlay, use those namespaces in the `stllr-<namespace>` name.
+
+**ClusterSecretStore:** If you use 1Password with ESO, ensure each environment values file sets `externalSecret.secretStoreRef.name: onepassword` (the chart default is `azure-keyvault`). Without the correct store name, ESO never syncs even if the vault item exists.
+
+**Create or update the JSON blob** (interactive scaffold + push to 1Password or AKV) from a checkout of **`stllr-infra`**—once **per** stage namespace, e.g.:
+
+```bash
+cd /path/to/stllr-infra
+task secrets:tenant
+# When prompted for namespace, enter: stllr-preview  (then repeat for stllr-demo)
+```
+
+Use `task secrets:push` if you already have a JSON file.
+
+**Verify in the cluster** (from this repo):
+
+```bash
+task secrets:stllr-stages-verify
+# If your preview/demo namespaces differ (e.g. template forks):
+STAGE_NS="tenant-hello-preview tenant-hello-demo" task secrets:stllr-stages-verify
+```
+
+You should see `ExternalSecret` `Ready` and a populated `tenant-secrets` Secret in each namespace. If the namespace does not exist yet, Argo CD has not synced—run the check again after the namespace appears.
+
 ### 3.1 Enable stllr-infra apps in the turnkey chart
 
 Edit `chart/values.yaml` (or your environment overlay) to enable the `helloPlaceholder` block. This tells the platform chart to create Argo CD Applications pointing at `stllr-infra`:
@@ -327,7 +370,7 @@ kubectl get pods -n stllr-preview
 kubectl get pods -n stllr-demo
 ```
 
-Both environments run the full stllr-tenant chart stack: `stellarbridge-app`, `stellarbridge-api`, `coc-reporting-web`, `coc-reporting-worker`, and `vector`. They start at placeholder image tags and get updated on the first Kargo promotion.
+With **hello-placeholder** paths (as in the snippet above), preview and demo run the nginx placeholder until you cut over. After you switch to **`charts/stllr-tenant`** (e.g. `environments/preview` / `environments/demo`), the full stack runs: `stellarbridge-app`, `stellarbridge-api`, `coc-reporting-web`, `coc-reporting-worker`, and `vector`. Image tags start as placeholders and update on Kargo promotion; **app secrets** for that layout are covered in [§3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only).
 
 > **Preview** auto-promotes when CI pushes a new semver tag (`>=0.1.0`) to any watched image.
 > **Demo** requires a manual approval in the Kargo UI.
@@ -467,6 +510,7 @@ cohorts:
 - [ ] `stllr-demo` Application `Synced/Healthy`
 - [ ] `stllr-tenants` ApplicationSet generating Applications
 - [ ] All pods in `stllr-preview` and `stllr-demo` are `Running`
+- [ ] If preview/demo use `stllr-tenant`: vault items `stllr-<namespace>` exist; `task secrets:stllr-stages-verify` shows `ExternalSecret` Ready and `tenant-secrets` present (see [§3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only))
 
 ### Per-Tenant
 

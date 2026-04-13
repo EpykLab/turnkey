@@ -15,7 +15,3 @@ config:
   doppler.project: stellarbridge
   doppler.config: dev
   otel.elasticEndpoint: https://elastic.internal:4317
-  # Optional components (wire through Pulumi when implemented; inert until read by code)
-  features.tekton: "false"
-  features.kargo: "false"
-  features.observability_stack: "false"

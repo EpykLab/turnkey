@@ -316,7 +316,20 @@ has not synced—run the check again after the namespace appears.
 
 ### 3.1 Enable stllr-infra apps in the turnkey chart
 
-Edit `chart/values.yaml` (or your environment overlay) to enable the `helloPlaceholder` block. This tells the platform chart to create Argo CD Applications pointing at `stllr-infra`:
+Edit `chart/values.yaml` (or your environment overlay) to enable the `helloPlaceholder` block. This tells the platform chart to create Argo CD Applications pointing at `stllr-infra`.
+
+**What `path` means:** Each `path` is a **directory inside the Git repository** given by `repoURL` (above: `stllr-infra`), measured from that repo’s root. Argo CD clones `stllr-infra` and syncs that folder. It is **not** a path in this repository, and **not** an absolute path on your laptop. The same rule applies to `argocd`, `kargo`, preview/demo, and tenants.
+
+**Which `path` for preview and demo:** Use one of these; do not mix for the same Application.
+
+| Stage | Use case | Set `path` to |
+|---|---|---|
+| **Hello placeholder** (default first) | Nginx-only tiers until images and secrets are ready | `deploy/hello-placeholder/overlays/preview` or `.../demo` (Kustomize overlays in `stllr-infra`) |
+| **Full stack** (cutover) | Real `stllr-tenant` Helm release for that stage | `charts/stllr-tenant` — the Helm chart directory in `stllr-infra` |
+
+For the full stack, Argo CD must deploy **Helm** at `charts/stllr-tenant` and you must set `helmValueFiles` (paths are relative to **that chart directory**, e.g. `../../environments/preview/values.yaml`). Keep Application names `stllr-preview` and `stllr-demo` so Kargo `argocd-update` in `stllr-infra` keeps matching.
+
+Example — **hello placeholder** (start here unless you have already cut over):
 
 ```yaml
 helloPlaceholder:
@@ -355,10 +368,7 @@ helloPlaceholder:
       project: default
 ```
 
-After cutover to the real Helm chart, replace the **preview** and **demo**
-entries with `charts/stllr-tenant` and `helmValueFiles` (paths are **relative
-to the chart directory**). Keep the Application **names** `stllr-preview` and
-`stllr-demo` so Kargo `argocd-update` in `stllr-infra` keeps matching:
+**After cutover to the full Helm chart**, replace only the **preview** and **demo** entries in `apps` with the following (same `name`, `project`, and `kargoAuthorizedStage` as above; `helmValueFiles` paths stay relative to `charts/stllr-tenant/`):
 
 ```yaml
     - name: stllr-preview
@@ -379,6 +389,8 @@ to the chart directory**). Keep the Application **names** `stllr-preview` and
       helmValueFiles:
         - ../../environments/demo/values.yaml
 ```
+
+Your environment overlay may use different `namespace:` values (for example `tenant-hello-preview` / `tenant-hello-demo` in DOKS examples); that does not change what `path` must be—only which Kubernetes namespace the Application targets.
 
 Commit and push. Argo CD will sync the new Applications within ~3 minutes.
 

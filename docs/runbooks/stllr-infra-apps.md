@@ -88,6 +88,8 @@ helloPlaceholder:
 | `kargoAuthorizedStage` | No | Kargo stage name (e.g., `stllr:preview`). Omit for standard ArgoCD management |
 | `syncWave` | No | ArgoCD sync wave (default: `55`). Lower numbers deploy first |
 | `project` | No | ArgoCD project (default: `default`) |
+| `helmValueFiles` | No | Extra Helm value files (paths relative to `path` / chart dir) for Helm charts |
+| `helmValues` | No | Inline Helm `valuesObject` (see template) |
 
 ## Key Differences
 
@@ -236,6 +238,42 @@ helloPlaceholder:
       namespace: ""
       syncWave: "58"
 ```
+
+### Example 4: Stellarbridge `stllr-tenant` (Helm + Kargo)
+
+Preview and demo deploy the **`stllr-tenant`** Helm chart from `stllr-infra` with
+per-environment value files. Use `helmValueFiles` (paths **relative to the
+chart directory**). Keep Application names **`stllr-preview`** and
+**`stllr-demo`** so Kargo `argocd-update` in `stllr-infra` matches.
+
+```yaml
+helloPlaceholder:
+  enabled: true
+  repoURL: "https://github.com/EpykLab/stllr-infra"
+  targetRevision: "master"
+  apps:
+    - name: stllr-preview
+      path: charts/stllr-tenant
+      namespace: stllr-preview
+      project: tenant
+      kargoAuthorizedStage: "stllr:preview"
+      syncWave: "55"
+      helmValueFiles:
+        - ../../environments/preview/values.yaml
+    - name: stllr-demo
+      path: charts/stllr-tenant
+      namespace: stllr-demo
+      project: tenant
+      kargoAuthorizedStage: "stllr:demo"
+      syncWave: "55"
+      helmValueFiles:
+        - ../../environments/demo/values.yaml
+```
+
+Those value files enable **`ingress`** (host-based routing to app, API, and
+CoC web on `*.stellarbridge.app`), **cert-manager** TLS, and DNS on the shared
+ingress-nginx LoadBalancer IP. Details: `stllr-infra` `README.md` and
+`docs/promotion-model.md`.
 
 ## Verification
 

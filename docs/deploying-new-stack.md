@@ -324,6 +324,7 @@ helloPlaceholder:
     - name: stllr-preview
       path: deploy/hello-placeholder/overlays/preview
       namespace: stllr-preview
+      project: tenant
       kargoAuthorizedStage: "stllr:preview"
       syncWave: "55"
 
@@ -331,6 +332,7 @@ helloPlaceholder:
     - name: stllr-demo
       path: deploy/hello-placeholder/overlays/demo
       namespace: stllr-demo
+      project: tenant
       kargoAuthorizedStage: "stllr:demo"
       syncWave: "55"
 
@@ -347,6 +349,31 @@ helloPlaceholder:
       namespace: stllr
       syncWave: "52"
       project: default
+```
+
+After cutover to the real Helm chart, replace the **preview** and **demo**
+entries with `charts/stllr-tenant` and `helmValueFiles` (paths are **relative
+to the chart directory**). Keep the Application **names** `stllr-preview` and
+`stllr-demo` so Kargo `argocd-update` in `stllr-infra` keeps matching:
+
+```yaml
+    - name: stllr-preview
+      path: charts/stllr-tenant
+      namespace: stllr-preview
+      project: tenant
+      kargoAuthorizedStage: "stllr:preview"
+      syncWave: "55"
+      helmValueFiles:
+        - ../../environments/preview/values.yaml
+
+    - name: stllr-demo
+      path: charts/stllr-tenant
+      namespace: stllr-demo
+      project: tenant
+      kargoAuthorizedStage: "stllr:demo"
+      syncWave: "55"
+      helmValueFiles:
+        - ../../environments/demo/values.yaml
 ```
 
 Commit and push. Argo CD will sync the new Applications within ~3 minutes.
@@ -371,6 +398,22 @@ kubectl get pods -n stllr-demo
 ```
 
 With **hello-placeholder** paths (as in the snippet above), preview and demo run the nginx placeholder until you cut over. After you switch to **`charts/stllr-tenant`** (e.g. `environments/preview` / `environments/demo`), the full stack runs: `stellarbridge-app`, `stellarbridge-api`, `coc-reporting-web`, `coc-reporting-worker`, and `vector`. Image tags start as placeholders and update on Kargo promotion; **app secrets** for that layout are covered in [§3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only).
+
+**Public hostnames (Ingress):** `stllr-infra` enables `ingress` in the preview
+and demo environment value files. Traffic uses **host-based routing** on the
+same cluster ingress-nginx **LoadBalancer** IP as other apps:
+
+- Preview: `preview.stellarbridge.app`, `api.preview.stellarbridge.app`,
+  `coc.preview.stellarbridge.app`
+- Demo: `demo.stellarbridge.app`, `api.demo.stellarbridge.app`,
+  `coc.demo.stellarbridge.app`
+
+Add DNS **A/AAAA** records for those names to the ingress Service external IP.
+TLS is handled by **cert-manager** (`ingress.clusterIssuer` in those files;
+default `letsencrypt-cloudflare`—install a matching `ClusterIssuer`, see
+[cert-manager-cloudflare-dns01.md](./cert-manager-cloudflare-dns01.md)).
+Stage vault secrets and Auth0 URL allowlists must use the same hostnames; see
+`stllr-infra` docs (`README.md`, `docs/promotion-model.md`, `docs/secrets.md`).
 
 > **Preview** auto-promotes when CI pushes a new semver tag (`>=0.1.0`) to any watched image.
 > **Demo** requires a manual approval in the Kargo UI.

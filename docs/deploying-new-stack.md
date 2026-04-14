@@ -274,9 +274,10 @@ Phase 2.3 configures **Kargo** (git push + ghcr poll). That is **not** the same 
 | Concern | What it unlocks | Where it lives |
 |---|---|---|
 | Kargo git + ghcr secrets | Warehouse discovers tags; stages can commit image bumps to `stllr-infra` | Kubernetes Secrets in namespace `stllr`, labeled for Kargo |
-| App secrets (ESO) | Pods start with env vars; avoids CrashLoop on missing DB/Auth0/etc. | One vault item **per Kubernetes namespace**, name `stllr-<namespace>` |
+| App secrets (ESO) | Credentials and sensitive env vars | One vault item **per Kubernetes namespace**, name `stllr-<namespace>` (JSON → `tenant-secrets`) |
+| App config (Helm) | Non-secrets, `STLLR_DOMAIN`, optional in-cluster PDF URL | ConfigMaps `stellarbridge-app-config` / `stellarbridge-api-config` from chart values (`configEnv`, Ingress) |
 
-**When this applies:** The default **hello-placeholder** overlays are nginx-only; they do **not** need `tenant-secrets` or ESO. As soon as you point preview/demo Applications at the **`charts/stllr-tenant`** chart—typically via `environments/preview` and `environments/demo` in `stllr-infra`—you must provision app secrets **before** those workloads can run.
+**When this applies:** The default **hello-placeholder** overlays are nginx-only; they do **not** need `tenant-secrets` or ESO. As soon as you point preview/demo Applications at the **`charts/stllr-tenant`** chart—typically via `environments/preview` and `environments/demo` in `stllr-infra`—you must provision **vault secrets** and ensure **Helm values** supply required `configEnv` (see `stllr-infra` `docs/secrets.md`) **before** those workloads can run.
 
 **Naming (same convention for Azure Key Vault or 1Password):** the `ExternalSecret` in `stllr-tenant` requests remote key `stllr-<k8s-namespace>`. Examples:
 
@@ -308,7 +309,10 @@ task secrets:stllr-stages-verify
 STAGE_NS="tenant-hello-preview tenant-hello-demo" task secrets:stllr-stages-verify
 ```
 
-You should see `ExternalSecret` `Ready` and a populated `tenant-secrets` Secret in each namespace. If the namespace does not exist yet, Argo CD has not synced—run the check again after the namespace appears.
+You should see `ExternalSecret` `Ready`, a populated `tenant-secrets` Secret,
+and ConfigMaps `stellarbridge-app-config` / `stellarbridge-api-config` when the
+app and API workloads are enabled. If the namespace does not exist yet, Argo CD
+has not synced—run the check again after the namespace appears.
 
 ### 3.1 Enable stllr-infra apps in the turnkey chart
 
@@ -397,7 +401,7 @@ kubectl get pods -n stllr-preview
 kubectl get pods -n stllr-demo
 ```
 
-With **hello-placeholder** paths (as in the snippet above), preview and demo run the nginx placeholder until you cut over. After you switch to **`charts/stllr-tenant`** (e.g. `environments/preview` / `environments/demo`), the full stack runs: `stellarbridge-app`, `stellarbridge-api`, `coc-reporting-web`, `coc-reporting-worker`, and `vector`. Image tags start as placeholders and update on Kargo promotion; **app secrets** for that layout are covered in [§3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only).
+With **hello-placeholder** paths (as in the snippet above), preview and demo run the nginx placeholder until you cut over. After you switch to **`charts/stllr-tenant`** (e.g. `environments/preview` / `environments/demo`), the full stack runs: `stellarbridge-app`, `stellarbridge-api`, `coc-reporting-web`, `coc-reporting-worker`, and `vector`. Image tags start as placeholders and update on Kargo promotion; **vault secrets and Helm `configEnv`** for that layout are covered in [section 3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only).
 
 **Public hostnames (Ingress):** `stllr-infra` enables `ingress` in the preview
 and demo environment value files. Traffic uses **host-based routing** on the
@@ -412,8 +416,10 @@ Add DNS **A/AAAA** records for those names to the ingress Service external IP.
 TLS is handled by **cert-manager** (`ingress.clusterIssuer` in those files;
 default `letsencrypt-cloudflare`—install a matching `ClusterIssuer`, see
 [cert-manager-cloudflare-dns01.md](./cert-manager-cloudflare-dns01.md)).
-Stage vault secrets and Auth0 URL allowlists must use the same hostnames; see
-`stllr-infra` docs (`README.md`, `docs/promotion-model.md`, `docs/secrets.md`).
+Stage vault secrets and Auth0 URL allowlists must match the HTTPS origins the
+chart exposes (`STLLR_DOMAIN` follows the Ingress `app` host when ingress is
+enabled). See `stllr-infra` (`README.md`, `docs/promotion-model.md`,
+`docs/secrets.md`).
 
 > **Preview** auto-promotes when CI pushes a new semver tag (`>=0.1.0`) to any watched image.
 > **Demo** requires a manual approval in the Kargo UI.
@@ -448,11 +454,15 @@ stellarbridgeApp:
   replicas: 1
   image:
     tag: <version from stages/prod-approved.yaml>
+  # Non-secrets → ConfigMap (see stllr-infra docs/secrets.md).
+  configEnv:
+    STLLR_DB_HOST: "<postgres host>"
 
 stellarbridgeApi:
   replicas: 1
   image:
     tag: <version>
+  configEnv: {}
 
 cocReporting:
   web:
@@ -471,7 +481,7 @@ vector:
   tenantId: <slug>   # used as the tenant label in Elasticsearch / Vector
 ```
 
-Do not put secrets in this file.
+Do not put credentials in this file.
 
 ### 4.3 Create the tenant secrets
 
@@ -481,7 +491,11 @@ Run the interactive secrets scaffold from within the `stllr-infra` directory:
 task secrets:tenant
 ```
 
-This walks you through every required key, opens an editor, and pushes the completed JSON to 1Password (choose option 3). The item is stored in 1Password as `stllr-<namespace>` (e.g. `stllr-tenant-acme-corp`) and ESO syncs it into the `tenant-secrets` Kubernetes Secret in the tenant namespace.
+This scaffolds a **credential-only** JSON template, opens an editor, and pushes
+to 1Password (option 3), AKV, or Doppler. With `openssl` and `jq`, empty
+`STLLR_COOKIE_SECRET` and `STLLR_PDF_ENGINE_API_KEY` are prefilled. The remote
+item `stllr-<namespace>` syncs to Kubernetes `tenant-secrets`. Non-secrets live
+in Helm `configEnv` (not in this JSON).
 
 If you need to push an existing secrets file later:
 
@@ -510,9 +524,11 @@ kubectl get application tenant-<slug> -n argocd
 # Namespace and pods
 kubectl get pods -n tenant-<slug>
 
-# ESO should have synced the secrets from the vault
+# ESO + Helm: vault secret and app/API ConfigMaps
 kubectl get externalsecret tenant-secrets -n tenant-<slug>
 kubectl get secret tenant-secrets -n tenant-<slug>
+kubectl get configmap stellarbridge-app-config -n tenant-<slug>
+kubectl get configmap stellarbridge-api-config -n tenant-<slug>
 ```
 
 If ESO hasn't synced yet (default refresh is 1 hour), force it:
@@ -553,7 +569,7 @@ cohorts:
 - [ ] `stllr-demo` Application `Synced/Healthy`
 - [ ] `stllr-tenants` ApplicationSet generating Applications
 - [ ] All pods in `stllr-preview` and `stllr-demo` are `Running`
-- [ ] If preview/demo use `stllr-tenant`: vault items `stllr-<namespace>` exist; `task secrets:stllr-stages-verify` shows `ExternalSecret` Ready and `tenant-secrets` present (see [§3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only))
+- [ ] If preview/demo use `stllr-tenant`: vault items `stllr-<namespace>` exist; `task secrets:stllr-stages-verify` shows `ExternalSecret` Ready and `tenant-secrets` present; ConfigMaps exist when workloads are enabled (see [section 3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only))
 
 ### Per-Tenant
 
@@ -752,6 +768,6 @@ argocd_destroy_cleanup
 - `docs/runbooks/stllr-infra-apps.md` — configuring apps from stllr-infra
 - `docs/runbooks/cert-manager-cloudflare-dns01.md` — TLS certificates
 - `stllr-infra/docs/tenant-onboarding.md` — tenant onboarding deep-dive
-- `stllr-infra/docs/secrets.md` — secrets model and AKV naming
+- `stllr-infra/docs/secrets.md` — vault JSON vs Helm ConfigMaps, AKV naming
 - `stllr-infra/docs/promotion-model.md` — Kargo promotion pipeline
 - `stllr-infra/docs/staggered-rollout.md` — cohort rollout procedure

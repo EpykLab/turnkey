@@ -272,8 +272,10 @@ helloPlaceholder:
 
 Those value files enable **`ingress`** (host-based routing to app, API, and
 CoC web on `*.stellarbridge.app`), **cert-manager** TLS, and DNS on the shared
-ingress-nginx LoadBalancer IP. Details: `stllr-infra` `README.md` and
-`docs/promotion-model.md`.
+ingress-nginx LoadBalancer IP. Credentials stay in ESO-backed `tenant-secrets`;
+non-secrets and computed **`STLLR_DOMAIN`** come from Helm ConfigMaps (`configEnv`
+in values). See `stllr-infra` `README.md`, `docs/promotion-model.md`, and
+`docs/secrets.md`.
 
 ## Verification
 

@@ -147,7 +147,7 @@ tasks:
           --from-literal=username="$GH_USER" \
           --from-literal=password="$GH_TOKEN" \
           --save-config --dry-run=client -o yaml \
-        | kubectl label --local -f - kargo.akuity.io/secret-type=repository --dry-run=client -o yaml \
+        | kubectl label --local -f - kargo.akuity.io/cred-type=repository --dry-run=client -o yaml \
         | kubectl apply -f -
         echo "Done. Kargo can now commit promoted image tags to EpykLab/stllr-infra."
 
@@ -168,13 +168,17 @@ tasks:
           echo "Error: both values are required." >&2
           exit 1
         fi
-        kubectl create secret docker-registry ghcr-credentials \
+        # Kargo v1.9+ expects Opaque secrets with repoURL/username/password fields.
+        # repoURL matching is exact by default; repoURLIsRegex=true enables regex matching
+        # so one credential covers all images under ghcr.io/epyklab/.
+        kubectl create secret generic ghcr-credentials \
           -n stllr \
-          --docker-server=ghcr.io \
-          --docker-username="$GH_USER" \
-          --docker-password="$GH_TOKEN" \
+          --from-literal=repoURL="^ghcr\\.io/epyklab/" \
+          --from-literal=repoURLIsRegex="true" \
+          --from-literal=username="$GH_USER" \
+          --from-literal=password="$GH_TOKEN" \
           --save-config --dry-run=client -o yaml \
-        | kubectl label --local -f - kargo.akuity.io/secret-type=image --dry-run=client -o yaml \
+        | kubectl label --local -f - kargo.akuity.io/cred-type=image --dry-run=client -o yaml \
         | kubectl apply -f -
         echo "Done. Kargo can now discover new image tags in ghcr.io/epyklab."
 

@@ -147,6 +147,11 @@ spec:
                 - Job
               namespaces:
                 - turnkey-compliance
+          - resources:
+              kinds:
+                - Pod
+              names:
+                - cm-acme-http-solver-*
       validate:
         message: "readinessProbe and livenessProbe are required."
         pattern:

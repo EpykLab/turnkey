@@ -28,6 +28,20 @@ certManager:
   enabled: true
   namespace: cert-manager
   targetRevision: "v1.20.1"
+  clusterIssuer:
+    enabled: true
+    name: letsencrypt-cloudflare
+    email: platform@stellarbridge.app
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretName: letsencrypt-cloudflare-account-key
+    # Supported values:
+    # - http01
+    # - dns01-cloudflare
+    solverType: http01
+    http01IngressClass: nginx
+    cloudflareApiTokenSecret:
+      name: cloudflare-api-token
+      key: api-token
 
 externalSecrets:
   enabled: false

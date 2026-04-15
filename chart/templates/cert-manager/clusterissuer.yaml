@@ -1,0 +1,27 @@
+{{- if and .Values.certManager.enabled .Values.certManager.clusterIssuer.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.certManager.clusterIssuer.name | quote }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    turnkey.io/change-control: {{ .Values.argocd.repoUrl | quote }}
+spec:
+  acme:
+    email: {{ .Values.certManager.clusterIssuer.email | quote }}
+    server: {{ .Values.certManager.clusterIssuer.server | quote }}
+    privateKeySecretRef:
+      name: {{ .Values.certManager.clusterIssuer.privateKeySecretName | quote }}
+    solvers:
+      - {{- if eq .Values.certManager.clusterIssuer.solverType "dns01-cloudflare" }}
+        dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: {{ .Values.certManager.clusterIssuer.cloudflareApiTokenSecret.name | quote }}
+              key: {{ .Values.certManager.clusterIssuer.cloudflareApiTokenSecret.key | quote }}
+        {{- else }}
+        http01:
+          ingress:
+            class: {{ .Values.certManager.clusterIssuer.http01IngressClass | quote }}
+        {{- end }}
+{{- end }}

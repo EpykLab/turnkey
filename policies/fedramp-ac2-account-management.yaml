@@ -46,7 +46,7 @@ spec:
           - key: "{{ request.operation }}"
             operator: Equals
             value: UPDATE
-          - key: "{{ request.oldObject.secrets | length(@) }}"
+          - key: "{{ length(request.oldObject.secrets || `[]`) }}"
             operator: GreaterThan
             value: 0
       mutate:

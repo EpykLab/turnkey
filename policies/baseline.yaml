@@ -45,6 +45,11 @@ spec:
                 - Job
               namespaces:
                 - turnkey-compliance
+          - resources:
+              kinds:
+                - Pod
+              names:
+                - cm-acme-http-solver-*
       validate:
         message: "Privileged containers are not allowed."
         pattern:
@@ -94,6 +99,11 @@ spec:
                 - Job
               namespaces:
                 - turnkey-compliance
+          - resources:
+              kinds:
+                - Pod
+              names:
+                - cm-acme-http-solver-*
       validate:
         message: "CPU/memory requests and limits are required."
         pattern:

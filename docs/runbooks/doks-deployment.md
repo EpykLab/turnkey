@@ -87,7 +87,7 @@ tekton:
   enabled: true
 
 helloPlaceholder:
-  enabled: true  # stllr-preview / stllr-demo / stllr-prod → deploy/hello-placeholder
+  enabled: true  # stllr-preview / stllr-staging / stllr-prod → deploy/hello-placeholder
 
 kubeBench:
   enabled: true

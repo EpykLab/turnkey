@@ -249,10 +249,10 @@ helloPlaceholder:
       namespace: stllr-preview
       kargoAuthorizedStage: "stllr:preview"
       syncWave: "55"
-    - name: stllr-app-demo
-      path: charts/stllr-app/overlays/demo
-      namespace: stllr-demo
-      kargoAuthorizedStage: "stllr:demo"
+    - name: stllr-app-staging
+      path: charts/stllr-app/overlays/staging
+      namespace: stllr-staging
+      kargoAuthorizedStage: "stllr:staging"
       syncWave: "55"
     - name: stllr-app-prod
       path: charts/stllr-app/overlays/prod

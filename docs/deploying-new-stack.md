@@ -252,14 +252,14 @@ Opens GitHub with `read:packages` pre-selected. Writes `ghcr-credentials` into t
 The `ghcr-credentials` secret is created in the `stllr` namespace for Kargo, but pods in tenant namespaces also need it to pull private images. Copy it to each tenant namespace after the namespace is created by ArgoCD:
 
 ```bash
-for ns in tenant-hello-preview tenant-hello-demo tenant-hello-prod; do
+for ns in tenant-hello-preview tenant-hello-staging tenant-hello-prod; do
   kubectl get secret ghcr-credentials -n stllr -o json \
     | python3 -c "import json,sys; s=json.load(sys.stdin); s['metadata']={'name':s['metadata']['name'],'namespace':'$ns'}; print(json.dumps(s))" \
     | kubectl apply -f - 2>/dev/null || true
 done
 ```
 
-> **Note:** Tenant workload deployments are disabled by default in tenant values files (e.g. `tenants/hello-demo/values.yaml`) until Kargo promotes real images. Once Kargo runs image promotion and updates the image tags, re-enable the workloads in the tenant values.
+> **Note:** Tenant workload deployments are disabled by default in tenant values files (e.g. `tenants/hello-staging/values.yaml`) until Kargo promotes real images. Once Kargo runs image promotion and updates the image tags, re-enable the workloads in the tenant values.
 
 ---
 
@@ -277,14 +277,14 @@ Phase 2.3 configures **Kargo** (git push + ghcr poll). That is **not** the same 
 | App secrets (ESO) | Credentials and sensitive env vars | One vault item **per Kubernetes namespace**, name `stllr-<namespace>` (JSON → `tenant-secrets`) |
 | App config (Helm) | Non-secrets, `STLLR_DOMAIN`, optional in-cluster PDF URL | ConfigMaps `stellarbridge-app-config` / `stellarbridge-api-config` from chart values (`configEnv`, Ingress) |
 
-**When this applies:** The default **hello-placeholder** overlays are nginx-only; they do **not** need `tenant-secrets` or ESO. As soon as you point preview/demo Applications at the **`charts/stllr-tenant`** chart—typically via `environments/preview` and `environments/demo` in `stllr-infra`—you must provision **vault secrets** and ensure **Helm values** supply required `configEnv` (see `stllr-infra` `docs/secrets.md`) **before** those workloads can run.
+**When this applies:** The default **hello-placeholder** overlays are nginx-only; they do **not** need `tenant-secrets` or ESO. As soon as you point preview/staging Applications at the **`charts/stllr-tenant`** chart—typically via `environments/preview` and `environments/staging` in `stllr-infra`—you must provision **vault secrets** and ensure **Helm values** supply required `configEnv` (see `stllr-infra` `docs/secrets.md`) **before** those workloads can run.
 
 **Naming (same convention for Azure Key Vault or 1Password):** the `ExternalSecret` in `stllr-tenant` requests remote key `stllr-<k8s-namespace>`. Examples:
 
 | Kubernetes namespace | Vault item / AKV secret name |
 |---|---|
 | `stllr-preview` | `stllr-stllr-preview` |
-| `stllr-demo` | `stllr-stllr-demo` |
+| `stllr-staging` | `stllr-stllr-staging` |
 | `tenant-hello-preview` | `stllr-tenant-hello-preview` |
 
 If you use different `namespace:` values under `helloPlaceholder.apps` in your chart overlay, use those namespaces in the `stllr-<namespace>` name.
@@ -296,7 +296,7 @@ If you use different `namespace:` values under `helloPlaceholder.apps` in your c
 ```bash
 cd /path/to/stllr-infra
 task secrets:tenant
-# When prompted for namespace, enter: stllr-preview  (then repeat for stllr-demo)
+# When prompted for namespace, enter: stllr-preview  (then repeat for stllr-staging)
 ```
 
 Use `task secrets:push` if you already have a JSON file.
@@ -305,8 +305,8 @@ Use `task secrets:push` if you already have a JSON file.
 
 ```bash
 task secrets:stllr-stages-verify
-# If your preview/demo namespaces differ (e.g. template forks):
-STAGE_NS="tenant-hello-preview tenant-hello-demo" task secrets:stllr-stages-verify
+# If your preview/staging namespaces differ (e.g. template forks):
+STAGE_NS="tenant-hello-preview tenant-hello-staging" task secrets:stllr-stages-verify
 ```
 
 You should see `ExternalSecret` `Ready`, a populated `tenant-secrets` Secret,
@@ -318,16 +318,16 @@ has not synced—run the check again after the namespace appears.
 
 Edit `chart/values.yaml` (or your environment overlay) to enable the `helloPlaceholder` block. This tells the platform chart to create Argo CD Applications pointing at `stllr-infra`.
 
-**What `path` means:** Each `path` is a **directory inside the Git repository** given by `repoURL` (above: `stllr-infra`), measured from that repo’s root. Argo CD clones `stllr-infra` and syncs that folder. It is **not** a path in this repository, and **not** an absolute path on your laptop. The same rule applies to `argocd`, `kargo`, preview/demo, and tenants.
+**What `path` means:** Each `path` is a **directory inside the Git repository** given by `repoURL` (above: `stllr-infra`), measured from that repo’s root. Argo CD clones `stllr-infra` and syncs that folder. It is **not** a path in this repository, and **not** an absolute path on your laptop. The same rule applies to `argocd`, `kargo`, preview/staging, and tenants.
 
-**Which `path` for preview and demo:** Use one of these; do not mix for the same Application.
+**Which `path` for preview and staging:** Use one of these; do not mix for the same Application.
 
 | Stage | Use case | Set `path` to |
 |---|---|---|
-| **Hello placeholder** (default first) | Nginx-only tiers until images and secrets are ready | `deploy/hello-placeholder/overlays/preview` or `.../demo` (Kustomize overlays in `stllr-infra`) |
+| **Hello placeholder** (default first) | Nginx-only tiers until images and secrets are ready | `deploy/hello-placeholder/overlays/preview` or `.../staging` (Kustomize overlays in `stllr-infra`) |
 | **Full stack** (cutover) | Real `stllr-tenant` Helm release for that stage | `charts/stllr-tenant` — the Helm chart directory in `stllr-infra` |
 
-For the full stack, Argo CD must deploy **Helm** at `charts/stllr-tenant` and you must set `helmValueFiles` (paths are relative to **that chart directory**, e.g. `../../environments/preview/values.yaml`). Keep Application names `stllr-preview` and `stllr-demo` so Kargo `argocd-update` in `stllr-infra` keeps matching.
+For the full stack, Argo CD must deploy **Helm** at `charts/stllr-tenant` and you must set `helmValueFiles` (paths are relative to **that chart directory**, e.g. `../../environments/preview/values.yaml`). Keep Application names `stllr-preview` and `stllr-staging` so Kargo `argocd-update` in `stllr-infra` keeps matching.
 
 Example — **hello placeholder** (start here unless you have already cut over):
 
@@ -345,12 +345,12 @@ helloPlaceholder:
       kargoAuthorizedStage: "stllr:preview"
       syncWave: "55"
 
-    # Kargo-managed: demo environment (manual promotion gate)
-    - name: stllr-demo
-      path: deploy/hello-placeholder/overlays/demo
-      namespace: stllr-demo
+    # Kargo-managed: staging environment (manual promotion gate)
+    - name: stllr-staging
+      path: deploy/hello-placeholder/overlays/staging
+      namespace: stllr-staging
       project: tenant
-      kargoAuthorizedStage: "stllr:demo"
+      kargoAuthorizedStage: "stllr:staging"
       syncWave: "55"
 
     # Tenant ApplicationSet: creates one Argo CD Application per directory under tenants/
@@ -368,7 +368,7 @@ helloPlaceholder:
       project: default
 ```
 
-**After cutover to the full Helm chart**, replace only the **preview** and **demo** entries in `apps` with the following (same `name`, `project`, and `kargoAuthorizedStage` as above; `helmValueFiles` paths stay relative to `charts/stllr-tenant/`):
+**After cutover to the full Helm chart**, replace only the **preview** and **staging** entries in `apps` with the following (same `name`, `project`, and `kargoAuthorizedStage` as above; `helmValueFiles` paths stay relative to `charts/stllr-tenant/`):
 
 ```yaml
     - name: stllr-preview
@@ -380,17 +380,17 @@ helloPlaceholder:
       helmValueFiles:
         - ../../environments/preview/values.yaml
 
-    - name: stllr-demo
+    - name: stllr-staging
       path: charts/stllr-tenant
-      namespace: stllr-demo
+      namespace: stllr-staging
       project: tenant
-      kargoAuthorizedStage: "stllr:demo"
+      kargoAuthorizedStage: "stllr:staging"
       syncWave: "55"
       helmValueFiles:
-        - ../../environments/demo/values.yaml
+        - ../../environments/staging/values.yaml
 ```
 
-Your environment overlay may use different `namespace:` values (for example `tenant-hello-preview` / `tenant-hello-demo` in DOKS examples); that does not change what `path` must be—only which Kubernetes namespace the Application targets.
+Your environment overlay may use different `namespace:` values (for example `tenant-hello-preview` / `tenant-hello-staging` in DOKS examples); that does not change what `path` must be—only which Kubernetes namespace the Application targets.
 
 Commit and push. Argo CD will sync the new Applications within ~3 minutes.
 
@@ -404,25 +404,25 @@ kubectl get warehouse stllr-images -n stllr
 kubectl get freight -n stllr
 ```
 
-### 3.3 Verify preview and demo environments
+### 3.3 Verify preview and staging environments
 
 ```bash
 kubectl get application stllr-preview -n argocd
-kubectl get application stllr-demo -n argocd
+kubectl get application stllr-staging -n argocd
 kubectl get pods -n stllr-preview
-kubectl get pods -n stllr-demo
+kubectl get pods -n stllr-staging
 ```
 
-With **hello-placeholder** paths (as in the snippet above), preview and demo run the nginx placeholder until you cut over. After you switch to **`charts/stllr-tenant`** (e.g. `environments/preview` / `environments/demo`), the full stack runs: `stellarbridge-app`, `stellarbridge-api`, `coc-reporting-web`, `coc-reporting-worker`, and `vector`. Image tags start as placeholders and update on Kargo promotion; **vault secrets and Helm `configEnv`** for that layout are covered in [section 3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only).
+With **hello-placeholder** paths (as in the snippet above), preview and staging run the nginx placeholder until you cut over. After you switch to **`charts/stllr-tenant`** (e.g. `environments/preview` / `environments/staging`), the full stack runs: `stellarbridge-app`, `stellarbridge-api`, `coc-reporting-web`, `coc-reporting-worker`, and `vector`. Image tags start as placeholders and update on Kargo promotion; **vault secrets and Helm `configEnv`** for that layout are covered in [section 3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only).
 
 **Public hostnames (Ingress):** `stllr-infra` enables `ingress` in the preview
-and demo environment value files. Traffic uses **host-based routing** on the
+and staging environment value files. Traffic uses **host-based routing** on the
 same cluster ingress-nginx **LoadBalancer** IP as other apps:
 
 - Preview: `preview.stellarbridge.app`, `api.preview.stellarbridge.app`,
   `coc.preview.stellarbridge.app`
-- Demo: `demo.stellarbridge.app`, `api.demo.stellarbridge.app`,
-  `coc.demo.stellarbridge.app`
+- Staging: `staging.stellarbridge.app`, `api.staging.stellarbridge.app`,
+  `coc.staging.stellarbridge.app`
 
 Add DNS **A/AAAA** records for those names to the ingress Service external IP.
 TLS is handled by **cert-manager** (`ingress.clusterIssuer` in those files;
@@ -456,7 +456,7 @@ The slug becomes the namespace: `tenant-<slug>`. Keep it lowercase, alphanumeric
 
 ### 4.2 Write the tenant values file
 
-Start from `tenants/hello-demo/values.yaml` and update for the new tenant. Set image tags to the current prod-approved versions from `stages/prod-approved.yaml`:
+Start from `tenants/hello-staging/values.yaml` and update for the new tenant. Set image tags to the current prod-approved versions from `stages/prod-approved.yaml`:
 
 ```yaml
 tenant:
@@ -559,7 +559,7 @@ Add the tenant to `tenants/_cohorts.yaml` in the appropriate cohort for staggere
 cohorts:
   cohort-1:
     tenants:
-      - hello-demo
+      - hello-staging
       - <slug>   # ← add here
 ```
 
@@ -578,10 +578,10 @@ cohorts:
 ### Application Stack
 
 - [ ] `stllr-preview` Application `Synced/Healthy`
-- [ ] `stllr-demo` Application `Synced/Healthy`
+- [ ] `stllr-staging` Application `Synced/Healthy`
 - [ ] `stllr-tenants` ApplicationSet generating Applications
-- [ ] All pods in `stllr-preview` and `stllr-demo` are `Running`
-- [ ] If preview/demo use `stllr-tenant`: vault items `stllr-<namespace>` exist; `task secrets:stllr-stages-verify` shows `ExternalSecret` Ready and `tenant-secrets` present; ConfigMaps exist when workloads are enabled (see [section 3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only))
+- [ ] All pods in `stllr-preview` and `stllr-staging` are `Running`
+- [ ] If preview/staging use `stllr-tenant`: vault items `stllr-<namespace>` exist; `task secrets:stllr-stages-verify` shows `ExternalSecret` Ready and `tenant-secrets` present; ConfigMaps exist when workloads are enabled (see [section 3.0](#30-application-secrets-for-kargo-stages-full-stllr-tenant-stack-only))
 
 ### Per-Tenant
 
@@ -620,8 +620,8 @@ task access:kargo
 See `stllr-infra/docs/promotion-model.md` and `stllr-infra/docs/staggered-rollout.md` for the full procedure. In summary:
 
 1. CI pushes a semver tag → Kargo auto-promotes to `preview`
-2. Verify preview is healthy → manually approve in Kargo UI to promote to `demo`
-3. Soak demo for ≥24h (patch) / ≥48h (minor)
+2. Verify preview is healthy → manually approve in Kargo UI to promote to `staging`
+3. Soak staging for >=24h (patch) / >=48h (minor)
 4. Update `stages/prod-approved.yaml` with the approved versions, open a PR
 5. Open cohort PRs to update image tags in `tenants/<slug>/values.yaml` — one cohort at a time
 6. Argo CD syncs each tenant automatically on merge

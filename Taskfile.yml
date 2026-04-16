@@ -187,9 +187,9 @@ tasks:
     cmds:
       - |
         set -e
-        NS_LIST="${STAGE_NS:-stllr-preview stllr-demo}"
+        NS_LIST="${STAGE_NS:-stllr-preview stllr-staging}"
         echo "Checking namespaces: $NS_LIST"
-        echo "(Set STAGE_NS='ns1 ns2' to override, e.g. tenant-hello-preview tenant-hello-demo)"
+        echo "(Set STAGE_NS='ns1 ns2' to override, e.g. tenant-hello-preview tenant-hello-staging)"
         echo ""
         for ns in $NS_LIST; do
           echo "=== namespace: $ns ==="

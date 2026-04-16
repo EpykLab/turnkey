@@ -6,7 +6,7 @@ Turnkey can deploy applications from your infrastructure repository (`stllr-infr
 
 The `helloPlaceholder` feature in Turnkey allows you to configure ArgoCD Applications that pull from `stllr-infra` (or any external repo). You can mix:
 
-- **Kargo-managed apps**: Applications that participate in Kargo promotion stages (e.g., your main app with preview → demo → prod stages)
+- **Kargo-managed apps**: Applications that participate in Kargo promotion stages (e.g., your main app with preview → staging → prod stages)
 - **Standard ArgoCD apps**: Applications that ArgoCD manages directly without Kargo promotion (e.g., cluster configuration, monitoring rules)
 
 ## Configuration
@@ -48,10 +48,10 @@ helloPlaceholder:
       kargoAuthorizedStage: "stllr:preview"  # Enables Kargo management
       syncWave: "55"
       
-    - name: stllr-web-demo
-      path: charts/stllr-web/overlays/demo
-      namespace: stllr-demo
-      kargoAuthorizedStage: "stllr:demo"
+    - name: stllr-web-staging
+      path: charts/stllr-web/overlays/staging
+      namespace: stllr-staging
+      kargoAuthorizedStage: "stllr:staging"
       syncWave: "55"
       
     - name: stllr-web-prod
@@ -168,10 +168,10 @@ helloPlaceholder:
       path: apps/stllr/overlays/preview
       namespace: preview
       kargoAuthorizedStage: "stllr:preview"
-    - name: app-demo
-      path: apps/stllr/overlays/demo
-      namespace: demo
-      kargoAuthorizedStage: "stllr:demo"
+    - name: app-staging
+      path: apps/stllr/overlays/staging
+      namespace: staging
+      kargoAuthorizedStage: "stllr:staging"
     - name: app-prod
       path: apps/stllr/overlays/prod
       namespace: prod
@@ -241,10 +241,10 @@ helloPlaceholder:
 
 ### Example 4: Stellarbridge `stllr-tenant` (Helm + Kargo)
 
-Preview and demo deploy the **`stllr-tenant`** Helm chart from `stllr-infra` with
+Preview and staging deploy the **`stllr-tenant`** Helm chart from `stllr-infra` with
 per-environment value files. Use `helmValueFiles` (paths **relative to the
 chart directory**). Keep Application names **`stllr-preview`** and
-**`stllr-demo`** so Kargo `argocd-update` in `stllr-infra` matches.
+**`stllr-staging`** so Kargo `argocd-update` in `stllr-infra` matches.
 
 ```yaml
 helloPlaceholder:
@@ -260,14 +260,14 @@ helloPlaceholder:
       syncWave: "55"
       helmValueFiles:
         - ../../environments/preview/values.yaml
-    - name: stllr-demo
+    - name: stllr-staging
       path: charts/stllr-tenant
-      namespace: stllr-demo
+      namespace: stllr-staging
       project: tenant
-      kargoAuthorizedStage: "stllr:demo"
+      kargoAuthorizedStage: "stllr:staging"
       syncWave: "55"
       helmValueFiles:
-        - ../../environments/demo/values.yaml
+        - ../../environments/staging/values.yaml
 ```
 
 Those value files enable **`ingress`** (host-based routing to app, API, and
@@ -341,7 +341,7 @@ kubectl get stages -n kargo
    │   └── stllr/
    │       └── overlays/
    │           ├── preview/
-   │           ├── demo/
+   │           ├── staging/
    │           └── prod/
    ├── charts/
    │   ├── cluster-config/

@@ -237,7 +237,7 @@ capability:
   name: Application Lifecycle Management
   description_markdown: |
     Manages external application deployments with Kustomize/Kargo integration,
-    multi-environment overlays (preview, demo, prod), and automated promotions.
+    multi-environment overlays (preview, staging, prod), and automated promotions.
   tags:
     - kustomize
     - kargo

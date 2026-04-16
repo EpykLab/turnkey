@@ -142,7 +142,7 @@ The following applications are deployed and managed by ArgoCD:
 | external-secrets | External secrets operator | **Disabled** (see notes) |
 | status-page | Public health endpoint | Enabled (DOKS); off on plain kind |
 | kube-bench | CIS-style scheduled checks | Enabled in `values.doks.yaml` / `values.kind.yaml` |
-| stllr-preview / demo / prod | Hello placeholder tenants (Kustomize) | Enabled in `values.doks.yaml` / `values.kind.yaml` |
+| stllr-preview / staging / prod | Hello placeholder tenants (Kustomize) | Enabled in `values.doks.yaml` / `values.kind.yaml` |
 
 ### External Secrets - Disabled
 

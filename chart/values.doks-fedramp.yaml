@@ -71,10 +71,10 @@ helloPlaceholder:
       path: deploy/hello-placeholder/overlays/preview
       namespace: tenant-hello-preview
       kargoAuthorizedStage: "stllr:preview"
-    - name: stllr-demo
-      path: deploy/hello-placeholder/overlays/demo
-      namespace: tenant-hello-demo
-      kargoAuthorizedStage: "stllr:demo"
+    - name: stllr-staging
+      path: deploy/hello-placeholder/overlays/staging
+      namespace: tenant-hello-staging
+      kargoAuthorizedStage: "stllr:staging"
     - name: stllr-prod
       path: deploy/hello-placeholder/overlays/prod
       namespace: tenant-hello-prod

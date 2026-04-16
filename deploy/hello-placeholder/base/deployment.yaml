@@ -5,7 +5,7 @@ metadata:
   name: hello-placeholder
   labels:
     app.kubernetes.io/name: hello-placeholder
-    app.kubernetes.io/component: demo
+    app.kubernetes.io/component: staging
 spec:
   replicas: 1
   selector:

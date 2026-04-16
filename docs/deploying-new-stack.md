@@ -247,16 +247,17 @@ task secrets:kargo-ghcr
 
 Opens GitHub with `read:packages` pre-selected. Writes `ghcr-credentials` into the `stllr` namespace with the required Kargo label.
 
-**Copy image pull credentials to tenant namespaces:**
+**Tenant image-pull fan-out (automatic):**
 
-The `ghcr-credentials` secret is created in the `stllr` namespace for Kargo, but pods in tenant namespaces also need it to pull private images. Copy it to each tenant namespace after the namespace is created by ArgoCD:
+`ghcr-credentials` in the `stllr` namespace is the source-of-truth. Kyverno policy
+`generate-tenant-ghcr-image-pull-secret` automatically clones/synchronizes that
+Secret into every `tenant-*` namespace, so no manual copy loop is required.
+
+Verify:
 
 ```bash
-for ns in tenant-hello-preview tenant-hello-staging tenant-hello-prod; do
-  kubectl get secret ghcr-credentials -n stllr -o json \
-    | python3 -c "import json,sys; s=json.load(sys.stdin); s['metadata']={'name':s['metadata']['name'],'namespace':'$ns'}; print(json.dumps(s))" \
-    | kubectl apply -f - 2>/dev/null || true
-done
+kubectl get clusterpolicy generate-tenant-ghcr-image-pull-secret
+kubectl get secret ghcr-credentials -n tenant-hello-staging
 ```
 
 > **Note:** Tenant workload deployments are disabled by default in tenant values files (e.g. `tenants/hello-staging/values.yaml`) until Kargo promotes real images. Once Kargo runs image promotion and updates the image tags, re-enable the workloads in the tenant values.

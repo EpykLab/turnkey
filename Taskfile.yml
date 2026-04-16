@@ -167,11 +167,15 @@ tasks:
           echo "Error: both values are required." >&2
           exit 1
         fi
-        # Kargo v1.9+ expects Opaque secrets with repoURL/username/password fields.
-        # repoURL matching is exact by default; repoURLIsRegex=true enables regex matching
-        # so one credential covers all images under ghcr.io/epyklab/.
+        # Dual-purpose secret:
+        # - kubernetes.io/dockerconfigjson for workload image pulls
+        # - repoURL/username/password fields for Kargo Warehouse auth resolution
+        AUTH_B64="$(printf '%s' "${GH_USER}:${GH_TOKEN}" | base64 | tr -d '\n')"
+        DOCKERCFG="$(printf '{"auths":{"ghcr.io":{"username":"%s","password":"%s","auth":"%s"}}}' "$GH_USER" "$GH_TOKEN" "$AUTH_B64")"
         kubectl create secret generic ghcr-credentials \
           -n stllr \
+          --type=kubernetes.io/dockerconfigjson \
+          --from-literal=.dockerconfigjson="$DOCKERCFG" \
           --from-literal=repoURL="^ghcr\\.io/epyklab/" \
           --from-literal=repoURLIsRegex="true" \
           --from-literal=username="$GH_USER" \

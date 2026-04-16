@@ -142,12 +142,11 @@ tasks:
         fi
         kubectl create secret generic stllr-infra-git \
           -n stllr \
-          --from-literal=type=https \
-          --from-literal=url=https://github.com/EpykLab/stllr-infra \
+          --from-literal=repoURL=https://github.com/EpykLab/stllr-infra \
           --from-literal=username="$GH_USER" \
           --from-literal=password="$GH_TOKEN" \
           --save-config --dry-run=client -o yaml \
-        | kubectl label --local -f - kargo.akuity.io/cred-type=repository --dry-run=client -o yaml \
+        | kubectl label --local -f - kargo.akuity.io/cred-type=git --dry-run=client -o yaml \
         | kubectl apply -f -
         echo "Done. Kargo can now commit promoted image tags to EpykLab/stllr-infra."
 

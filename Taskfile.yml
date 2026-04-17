@@ -418,6 +418,12 @@ tasks:
           exit 1
         fi
         SET_ARGS="\
+          --set proxy.securityContext.allowPrivilegeEscalation=false \
+          --set proxy.securityContext.readOnlyRootFilesystem=true \
+          --set proxy.securityContext.runAsNonRoot=true \
+          --set proxy.securityContext.runAsUser=2102 \
+          --set proxy.securityContext.seccompProfile.type=RuntimeDefault \
+          --set 'proxy.securityContext.capabilities.drop[0]=ALL' \
           --set proxy.securityContext.privileged=false \
           --set proxy.resources.cpu.request={{.LINKERD_PROXY_CPU_REQUEST}} \
           --set proxy.resources.memory.request={{.LINKERD_PROXY_MEMORY_REQUEST}} \

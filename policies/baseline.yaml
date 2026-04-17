@@ -39,6 +39,8 @@ spec:
                 - kargo-system-resources
                 - turnkey-compliance
                 - onepassword-connect
+                - linkerd
+                - linkerd-viz
           - resources:
               kinds:
                 - CronJob
@@ -93,6 +95,8 @@ spec:
                 - kargo-system-resources
                 - turnkey-compliance
                 - onepassword-connect
+                - linkerd
+                - linkerd-viz
           - resources:
               kinds:
                 - CronJob
@@ -141,6 +145,8 @@ spec:
                 - kargo-system-resources
                 - turnkey-compliance
                 - onepassword-connect
+                - linkerd
+                - linkerd-viz
           - resources:
               kinds:
                 - CronJob

@@ -377,36 +377,71 @@ tasks:
     cmds:
       - |
         set -euo pipefail
-        if ! command -v linkerd >/dev/null 2>&1; then
-          echo "Error: linkerd CLI not found on PATH." >&2
+        LINKERD_BIN="$(command -v linkerd || true)"
+        if [ -z "$LINKERD_BIN" ] && [ -x "$HOME/.linkerd2/bin/linkerd" ]; then
+          LINKERD_BIN="$HOME/.linkerd2/bin/linkerd"
+        fi
+        if [ -z "$LINKERD_BIN" ]; then
+          echo "Error: linkerd CLI not found." >&2
           echo "Install with: task mtls:linkerd:cli:install" >&2
           exit 1
         fi
-        echo "linkerd binary: $(command -v linkerd)"
-        linkerd version --client
+        echo "linkerd binary: $LINKERD_BIN"
+        "$LINKERD_BIN" version --client
+        if [ "$LINKERD_BIN" = "$HOME/.linkerd2/bin/linkerd" ] && ! command -v linkerd >/dev/null 2>&1; then
+          echo "Tip: add linkerd to PATH for this shell:"
+          echo "  export PATH=\$PATH:\$HOME/.linkerd2/bin"
+        fi
 
   mtls:linkerd:install:
-    desc: Install Linkerd control plane for pod-to-pod mTLS (run once per cluster)
+    desc: Install or upgrade Linkerd control plane for pod-to-pod mTLS
     silent: true
     vars:
       LINKERD_PROXY_IMAGE_VERSION: '{{.LINKERD_PROXY_IMAGE_VERSION | default ""}}'
+      LINKERD_PROXY_CPU_REQUEST: '{{.LINKERD_PROXY_CPU_REQUEST | default "10m"}}'
+      LINKERD_PROXY_MEMORY_REQUEST: '{{.LINKERD_PROXY_MEMORY_REQUEST | default "20Mi"}}'
+      LINKERD_PROXY_CPU_LIMIT: '{{.LINKERD_PROXY_CPU_LIMIT | default "200m"}}'
+      LINKERD_PROXY_MEMORY_LIMIT: '{{.LINKERD_PROXY_MEMORY_LIMIT | default "250Mi"}}'
+      LINKERD_PROXYINIT_CPU_REQUEST: '{{.LINKERD_PROXYINIT_CPU_REQUEST | default "10m"}}'
+      LINKERD_PROXYINIT_MEMORY_REQUEST: '{{.LINKERD_PROXYINIT_MEMORY_REQUEST | default "20Mi"}}'
+      LINKERD_PROXYINIT_CPU_LIMIT: '{{.LINKERD_PROXYINIT_CPU_LIMIT | default "100m"}}'
+      LINKERD_PROXYINIT_MEMORY_LIMIT: '{{.LINKERD_PROXYINIT_MEMORY_LIMIT | default "50Mi"}}'
     cmds:
       - |
         set -euo pipefail
-        if ! command -v linkerd >/dev/null 2>&1; then
+        LINKERD_BIN="$(command -v linkerd || true)"
+        if [ -z "$LINKERD_BIN" ] && [ -x "$HOME/.linkerd2/bin/linkerd" ]; then
+          LINKERD_BIN="$HOME/.linkerd2/bin/linkerd"
+        fi
+        if [ -z "$LINKERD_BIN" ]; then
           echo "Error: linkerd CLI not found. Install from https://linkerd.io/2/getting-started/" >&2
           exit 1
         fi
-        echo "Installing Linkerd CRDs..."
-        linkerd install --crds | kubectl apply -f -
+        SET_ARGS="\
+          --set proxy.securityContext.privileged=false \
+          --set proxy.resources.cpu.request={{.LINKERD_PROXY_CPU_REQUEST}} \
+          --set proxy.resources.memory.request={{.LINKERD_PROXY_MEMORY_REQUEST}} \
+          --set proxy.resources.cpu.limit={{.LINKERD_PROXY_CPU_LIMIT}} \
+          --set proxy.resources.memory.limit={{.LINKERD_PROXY_MEMORY_LIMIT}} \
+          --set proxyInit.resources.cpu.request={{.LINKERD_PROXYINIT_CPU_REQUEST}} \
+          --set proxyInit.resources.memory.request={{.LINKERD_PROXYINIT_MEMORY_REQUEST}} \
+          --set proxyInit.resources.cpu.limit={{.LINKERD_PROXYINIT_CPU_LIMIT}} \
+          --set proxyInit.resources.memory.limit={{.LINKERD_PROXYINIT_MEMORY_LIMIT}}"
         if [ -n "{{.LINKERD_PROXY_IMAGE_VERSION}}" ]; then
-          echo "Installing Linkerd control plane with proxy.image.version={{.LINKERD_PROXY_IMAGE_VERSION}}"
-          linkerd install --set proxy.image.version="{{.LINKERD_PROXY_IMAGE_VERSION}}" | kubectl apply -f -
-        else
-          echo "Installing Linkerd control plane with default proxy image version"
-          linkerd install | kubectl apply -f -
+          SET_ARGS="$SET_ARGS --set proxy.image.version={{.LINKERD_PROXY_IMAGE_VERSION}}"
+          echo "Using proxy.image.version={{.LINKERD_PROXY_IMAGE_VERSION}}"
         fi
-        linkerd check
+        if kubectl get configmap linkerd-config -n linkerd >/dev/null 2>&1; then
+          echo "Upgrading existing Linkerd control plane..."
+          # Keep default sidecar resources/securityContext aligned with quota + Kyverno constraints.
+          "$LINKERD_BIN" upgrade $SET_ARGS | kubectl apply -f -
+        else
+          echo "Installing Linkerd CRDs..."
+          "$LINKERD_BIN" install --crds | kubectl apply -f -
+          echo "Installing Linkerd control plane..."
+          "$LINKERD_BIN" install $SET_ARGS | kubectl apply -f -
+        fi
+        "$LINKERD_BIN" check
 
   mtls:linkerd:inject:namespaces:
     desc: Enable Linkerd sidecar injection on stllr tenant namespaces
@@ -473,8 +508,12 @@ tasks:
           echo "Error: jq is required for verification output." >&2
           exit 1
         fi
-        if command -v linkerd >/dev/null 2>&1; then
-          linkerd check --proxy
+        LINKERD_BIN="$(command -v linkerd || true)"
+        if [ -z "$LINKERD_BIN" ] && [ -x "$HOME/.linkerd2/bin/linkerd" ]; then
+          LINKERD_BIN="$HOME/.linkerd2/bin/linkerd"
+        fi
+        if [ -n "$LINKERD_BIN" ]; then
+          "$LINKERD_BIN" check --proxy
         else
           echo "Warning: linkerd CLI not installed; skipping linkerd check --proxy"
         fi
@@ -501,12 +540,29 @@ tasks:
     silent: true
     vars:
       LINKERD_PROXY_IMAGE_VERSION: '{{.LINKERD_PROXY_IMAGE_VERSION | default ""}}'
+      LINKERD_PROXY_CPU_REQUEST: '{{.LINKERD_PROXY_CPU_REQUEST | default "10m"}}'
+      LINKERD_PROXY_MEMORY_REQUEST: '{{.LINKERD_PROXY_MEMORY_REQUEST | default "20Mi"}}'
+      LINKERD_PROXY_CPU_LIMIT: '{{.LINKERD_PROXY_CPU_LIMIT | default "200m"}}'
+      LINKERD_PROXY_MEMORY_LIMIT: '{{.LINKERD_PROXY_MEMORY_LIMIT | default "250Mi"}}'
+      LINKERD_PROXYINIT_CPU_REQUEST: '{{.LINKERD_PROXYINIT_CPU_REQUEST | default "10m"}}'
+      LINKERD_PROXYINIT_MEMORY_REQUEST: '{{.LINKERD_PROXYINIT_MEMORY_REQUEST | default "20Mi"}}'
+      LINKERD_PROXYINIT_CPU_LIMIT: '{{.LINKERD_PROXYINIT_CPU_LIMIT | default "100m"}}'
+      LINKERD_PROXYINIT_MEMORY_LIMIT: '{{.LINKERD_PROXYINIT_MEMORY_LIMIT | default "50Mi"}}'
       MTLS_NAMESPACES: '{{.MTLS_NAMESPACES | default ""}}'
       ROLLOUT_TIMEOUT: '{{.ROLLOUT_TIMEOUT | default "300s"}}'
     cmds:
       - |
         set -euo pipefail
-        task mtls:linkerd:install LINKERD_PROXY_IMAGE_VERSION="{{.LINKERD_PROXY_IMAGE_VERSION}}"
+        task mtls:linkerd:install \
+          LINKERD_PROXY_IMAGE_VERSION="{{.LINKERD_PROXY_IMAGE_VERSION}}" \
+          LINKERD_PROXY_CPU_REQUEST="{{.LINKERD_PROXY_CPU_REQUEST}}" \
+          LINKERD_PROXY_MEMORY_REQUEST="{{.LINKERD_PROXY_MEMORY_REQUEST}}" \
+          LINKERD_PROXY_CPU_LIMIT="{{.LINKERD_PROXY_CPU_LIMIT}}" \
+          LINKERD_PROXY_MEMORY_LIMIT="{{.LINKERD_PROXY_MEMORY_LIMIT}}" \
+          LINKERD_PROXYINIT_CPU_REQUEST="{{.LINKERD_PROXYINIT_CPU_REQUEST}}" \
+          LINKERD_PROXYINIT_MEMORY_REQUEST="{{.LINKERD_PROXYINIT_MEMORY_REQUEST}}" \
+          LINKERD_PROXYINIT_CPU_LIMIT="{{.LINKERD_PROXYINIT_CPU_LIMIT}}" \
+          LINKERD_PROXYINIT_MEMORY_LIMIT="{{.LINKERD_PROXYINIT_MEMORY_LIMIT}}"
         task mtls:linkerd:inject:namespaces MTLS_NAMESPACES="{{.MTLS_NAMESPACES}}"
         task mtls:linkerd:restart MTLS_NAMESPACES="{{.MTLS_NAMESPACES}}" ROLLOUT_TIMEOUT="{{.ROLLOUT_TIMEOUT}}"
         task mtls:linkerd:verify MTLS_NAMESPACES="{{.MTLS_NAMESPACES}}"

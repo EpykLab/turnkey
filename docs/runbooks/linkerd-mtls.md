@@ -15,6 +15,7 @@ This is **cluster bootstrap**, not a one-time repo setting:
 - `task` installed
 - `linkerd` CLI installed
 - Optional: pinned Linkerd proxy image tag
+- Tenant `NetworkPolicy` egress allows Linkerd control plane (`linkerd` namespace ports 8080/8086/8090)
 
 ## 0) Install/check Linkerd CLI
 
@@ -26,12 +27,15 @@ task mtls:linkerd:cli:check
 ## 1) Install Linkerd control plane
 
 ```bash
-# Default proxy image version
+# Default install/upgrade with quota-safe sidecar resource defaults
 task mtls:linkerd:install
 
 # OR pin a specific proxy image version (recommended for controlled upgrades)
 task mtls:linkerd:install LINKERD_PROXY_IMAGE_VERSION=<proxy-tag>
 ```
+
+By default, the install task sets resource requests/limits for `linkerd-proxy` and
+`linkerd-init` so injected pods pass strict `ResourceQuota` checks.
 
 ## 2) Enable sidecar injection on workload namespaces
 

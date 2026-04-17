@@ -233,6 +233,9 @@ task mtls:linkerd:restart
 task mtls:linkerd:verify
 ```
 
+`task mtls:linkerd:install` is idempotent (`install` first run, `upgrade` later) and
+applies default sidecar/init resource settings so meshed pods satisfy namespace quotas.
+
 Linkerd's internal CA issues short-lived certs to each proxy automatically. No external HSM or cert-manager involvement is needed for pod-to-pod mTLS.
 
 Default DOKS values now set Linkerd/mTLS enabled with FIPS disabled, but bootstrap is still required on every new cluster.

@@ -1,24 +1,13 @@
-# FedRAMP SC-8: Transmission Confidentiality
-# FIPS 140-2 Validated Cryptography ONLY
-# 
-# IMPORTANT: FedRAMP requires FIPS 140-2 validated cryptographic modules.
-# WireGuard is NOT FIPS 140-2 validated (uses ChaCha20-Poly1305).
+# FedRAMP SC-8: Transmission Confidentiality (pod-to-pod mTLS)
 #
-# RECOMMENDED ARCHITECTURE FOR TURNKEY:
-# Linkerd Service Mesh with FIPS 140-2 build
-# - Uses BoringSSL-FIPS (Certificate #2964)
-# - AES-GCM encryption (128, 256-bit) - FIPS approved
-# - ECDSA with P-256, P-384 curves - FIPS approved
-# - SHA-256, SHA-384 hashing - FIPS approved
-# - Automatic mTLS with sidecar injection
-# - Low overhead (~1ms vs Istio's ~5-10ms)
-#
-# Installation: https://linkerd.io/2.15/features/fips/
+# Baseline: Linkerd sidecar mTLS for east-west encryption.
+# Optional: Enable Linkerd FIPS build separately when validated crypto is required.
 
 # ============================================================================
-# Linkerd with FIPS 140-2 (RECOMMENDED)
+# Linkerd mTLS enforcement (baseline)
 # ============================================================================
-{{- if and .Values.linkerd.enabled .Values.linkerd.fips.enabled }}
+{{- if and .Values.linkerd.enabled .Values.fedramp.mtls.enabled }}
+{{- if .Values.linkerd.fips.enabled }}
 ---
 # SC-8(1): Document FIPS 140-2 compliance
 apiVersion: v1
@@ -54,6 +43,7 @@ data:
     - linkerd check shows mTLS is enabled
     - linkerd-identity CA certificates (FIPS-compliant)
     - linkerd-proxy logs showing TLS handshake with FIPS suites
+{{- end }}
 ---
 # Kyverno policy to enforce Linkerd injection
 apiVersion: kyverno.io/v1
@@ -66,8 +56,8 @@ metadata:
     policies.kyverno.io/category: FedRAMP SC-8
     policies.kyverno.io/subject: Deployment,StatefulSet,DaemonSet
     policies.kyverno.io/description: >-
-      Requires Linkerd sidecar injection for FIPS 140-2 mTLS in FedRAMP namespaces.
-      This ensures all inter-service traffic is encrypted with validated cryptography.
+      Requires Linkerd sidecar injection for pod-to-pod mTLS in FedRAMP namespaces.
+      This ensures all inter-service traffic is encrypted in transit.
 spec:
   validationFailureAction: Enforce
   background: true
@@ -93,7 +83,7 @@ spec:
                 - kyverno
                 - argocd
       validate:
-        message: "Workload must have Linkerd injection enabled for SC-8 FIPS 140-2 mTLS compliance"
+        message: "Workload must have Linkerd injection enabled for SC-8 mTLS compliance"
         pattern:
           spec:
             template:

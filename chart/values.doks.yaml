@@ -7,6 +7,17 @@ cilium:
   enabled: false
   doksCompatibilityMode: true
 
+# Service mesh mTLS baseline for DOKS.
+# FIPS is optional and can be enabled later when needed.
+linkerd:
+  enabled: true
+  fips:
+    enabled: false
+
+fedramp:
+  mtls:
+    enabled: true
+
 ingressNginx:
   enabled: true
   helmValues:

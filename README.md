@@ -206,38 +206,40 @@ Turnkey includes implementations for FedRAMP security controls (NIST SP 800-53 R
 | **AU-2/AU-9** | Audit Events & Protection | Vector log collection → S3 Object Lock | `vector.enabled: true` |
 | **AC-2** | Account Management | Kyverno policies for ServiceAccount lifecycle | Auto-enabled with Kyverno |
 | **SC-7** | Boundary Protection | NetworkPolicies (default deny) | `fedramp.networkPolicies.enabled: true` |
-| **SC-8** | Transmission Encryption | Linkerd FIPS mTLS (recommended) | See below |
+| **SC-8** | Transmission Encryption | Linkerd mTLS (FIPS optional) | See below |
 | **SI-4** | System Monitoring | Falco runtime security | `falco.enabled: true` |
 
-### SC-8: FIPS 140-2 Validated mTLS (⚠️ Required)
+### SC-8: Pod-to-Pod mTLS
 
-FedRAMP requires **FIPS 140-2 validated cryptography**. Turnkey uses **Linkerd with its FIPS build** as the sole mTLS mechanism. There is no fallback — if Linkerd is not running, pod-to-pod traffic is blocked by policy rather than silently left unencrypted.
+Turnkey uses **Linkerd** as the pod-to-pod mTLS mechanism. FIPS mode is optional and can be enabled later when your compliance scope requires validated cryptographic modules.
 
-**Setup:**
+**Setup (per cluster):**
 
 ```bash
-# 1. Install Linkerd FIPS build before enabling in values
-# https://linkerd.io/2.15/features/fips/
-linkerd install --set proxy.image.version=<fips-tag> | kubectl apply -f -
-linkerd check
-```
+# 0) Ensure Linkerd CLI is installed
+task mtls:linkerd:cli:install
+task mtls:linkerd:cli:check
 
-```yaml
-# 2. Enable in your stack values overlay
-linkerd:
-  enabled: true
-  fips:
-    enabled: true
+# 1) Install Linkerd control plane
+task mtls:linkerd:install
 
-fedramp:
-  mtls:
-    enabled: true
+# 2) Enable sidecar injection on tenant/stage namespaces
+task mtls:linkerd:inject:namespaces
+
+# 3) Restart workloads so linkerd-proxy is injected
+task mtls:linkerd:restart
+
+# 4) Verify proxy coverage and control plane health
+task mtls:linkerd:verify
 ```
 
 Linkerd's internal CA issues short-lived certs to each proxy automatically. No external HSM or cert-manager involvement is needed for pod-to-pod mTLS.
 
-**Why Linkerd only?**
-- BoringSSL-FIPS (Certificate #2964) — the only validated crypto path
+Default DOKS values now set Linkerd/mTLS enabled with FIPS disabled, but bootstrap is still required on every new cluster.
+
+Detailed runbook: [docs/runbooks/linkerd-mtls.md](docs/runbooks/linkerd-mtls.md)
+
+**Why Linkerd?**
 - ~1ms overhead vs Istio's ~5-10ms
 - Automatic, transparent mTLS via sidecar injection
 - Kyverno enforces injection is present in FedRAMP namespaces — no silent opt-out

@@ -117,15 +117,15 @@ cilium:
   # Note: WireGuard is NOT FIPS 140-2 validated (uses ChaCha20)
   # For FedRAMP SC-8, use Linkerd instead (see below)
 
-# FedRAMP SC-8 FIPS 140-2: Linkerd Service Mesh (mTLS)
-# RECOMMENDED: Lightweight, automatic mTLS with FIPS 140-2 validated crypto
-# Install FIPS build: https://linkerd.io/2.15/features/fips/
+# FedRAMP SC-8 baseline: Linkerd Service Mesh (mTLS)
+# RECOMMENDED: Lightweight, automatic pod-to-pod encryption
+# Optional: install FIPS build when validated crypto is required
 # Architecture: Rust-based sidecar proxies (~1ms overhead vs Istio's ~5-10ms)
 linkerd:
   enabled: false
   namespace: linkerd
   fips:
-    enabled: false  # Requires Linkerd FIPS build (BoringSSL-FIPS)
+    enabled: false  # Optional; requires a Linkerd FIPS build
 
 # FedRAMP Alternative: Istio (only if you need advanced traffic management)
 # NOT RECOMMENDED for turnkey: Heavy Envoy sidecars, complex operation
@@ -213,13 +213,11 @@ vector:
 fedramp:
   networkPolicies:
     enabled: false  # Enable to deploy default-deny and exception policies
-  # SC-8 Transmission Confidentiality: Linkerd with FIPS build (required)
-  # Uses BoringSSL-FIPS (Certificate #2964) for automatic pod-to-pod mTLS
-  # Install FIPS build: https://linkerd.io/2.15/features/fips/
-  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
+  # SC-8 Transmission Confidentiality baseline: Linkerd pod-to-pod mTLS
+  # Requires linkerd.enabled: true
   mtls:
     enabled: false
-  # Enforce FIPS 140-2 cipher suites via Kyverno policies
+  # Optional: enable when running a validated FIPS crypto profile
   enforceFIPS:
     enabled: false
 

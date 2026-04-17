@@ -107,14 +107,13 @@ vector:
 fedramp:
   networkPolicies:
     enabled: true  # Re-enabled with proper namespace-aware rules
-  # SC-8 Transmission Confidentiality: Linkerd with FIPS build (required)
-  # Enable after installing Linkerd FIPS build: https://linkerd.io/2.15/features/fips/
+  # SC-8 Transmission Confidentiality baseline: Linkerd mTLS for pod-to-pod traffic
   mtls:
-    enabled: false  # Requires linkerd.enabled: true AND linkerd.fips.enabled: true
-  # Enforce FIPS 140-2 cipher suites via Kyverno policies
+    enabled: true  # Requires linkerd.enabled: true
+  # Optional: enable when running a validated FIPS crypto profile
   # NOTE: Requires kyverno CRDs - enabled now that kyverno is deployed
   enforceFIPS:
-    enabled: true
+    enabled: false
 
 # FedRAMP SI-4: Information System Monitoring
 # Falco runtime security with custom FedRAMP rules
@@ -126,10 +125,9 @@ falco:
     enabled: false  # SIEM forwarding requires actual endpoint
     endpoint: ""  # Falcosidekick webhook endpoint
 
-# Linkerd Service Mesh with FIPS 140-2 (required for pod-to-pod mTLS)
-# Install FIPS build before enabling: https://linkerd.io/2.15/features/fips/
+# Linkerd Service Mesh baseline for pod-to-pod mTLS
 linkerd:
-  enabled: false
+  enabled: true
   namespace: linkerd
   fips:
-    enabled: false  # Requires Linkerd FIPS build (BoringSSL-FIPS)
+    enabled: false  # Optional; requires a Linkerd FIPS build

@@ -1,0 +1,5 @@
+# Trivy defaults to this file when present (`trivy config .`).
+# KSV-0125 trusted registries: see trivy/policy-data/ksv0125.yaml
+rego:
+  data:
+    - trivy/policy-data

@@ -1,0 +1,59 @@
+# Custom data for KSV-0125 (trusted container registries).
+# https://aquasecurity.github.io/trivy/latest/docs/scanner/misconfiguration/custom/data/
+#
+# Important: defining `trusted_registries` replaces Trivy's built-in default list
+# (Azure CR, AWS ECR/GCR-style hosts). Add every registry hostname you use,
+# including your private registry (e.g. registry.digitalocean.com) and any
+# public mirrors (docker.io, ghcr.io, etc.).
+#
+# Matching uses suffix: the image's first path segment must end with one of
+# these strings (see uses_untrusted_registry.rego in trivy-checks).
+ksv0125:
+  trusted_registries:
+    # --- Your private / org registry (edit or extend) ---
+    - registry.digitalocean.com
+
+    # --- Common public registries used by typical Kubernetes manifests ---
+    - docker.io
+    - ghcr.io
+    - quay.io
+    - gcr.io
+    - us.gcr.io
+    - eu.gcr.io
+    - asia.gcr.io
+    - mcr.microsoft.com
+    - registry.k8s.io
+    - public.ecr.aws
+    - docker.elastic.co
+
+    # Google Artifact Registry (hostname ends with pkg.dev)
+    - pkg.dev
+
+    # Azure Container Registry
+    - azurecr.io
+
+    # AWS ECR public endpoints (same set as Trivy defaults)
+    - ecr.us-east-2.amazonaws.com
+    - ecr.us-east-1.amazonaws.com
+    - ecr.us-west-1.amazonaws.com
+    - ecr.us-west-2.amazonaws.com
+    - ecr.af-south-1.amazonaws.com
+    - ecr.ap-east-1.amazonaws.com
+    - ecr.ap-south-1.amazonaws.com
+    - ecr.ap-northeast-2.amazonaws.com
+    - ecr.ap-southeast-1.amazonaws.com
+    - ecr.ap-southeast-2.amazonaws.com
+    - ecr.ap-northeast-1.amazonaws.com
+    - ecr.ca-central-1.amazonaws.com
+    - ecr.cn-north-1.amazonaws.com.cn
+    - ecr.cn-northwest-1.amazonaws.com.cn
+    - ecr.eu-central-1.amazonaws.com
+    - ecr.eu-west-1.amazonaws.com
+    - ecr.eu-west-2.amazonaws.com
+    - ecr.eu-south-1.amazonaws.com
+    - ecr.eu-west-3.amazonaws.com
+    - ecr.eu-north-1.amazonaws.com
+    - ecr.me-south-1.amazonaws.com
+    - ecr.sa-east-1.amazonaws.com
+    - ecr.us-gov-east-1.amazonaws.com
+    - ecr.us-gov-west-1.amazonaws.com

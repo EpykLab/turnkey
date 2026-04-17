@@ -289,7 +289,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: vector
-          image: timberio/vector:0.54.0-distroless-libc
+          image: docker.io/timberio/vector:0.54.0-distroless-libc
           imagePullPolicy: IfNotPresent
           args:
             - --config

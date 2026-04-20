@@ -13,3 +13,4 @@ config:
   doppler.project: stellarbridge
   doppler.config: staging
   otel.elasticEndpoint: https://elastic.internal:4317
+  platform.valueFiles: '["values.yaml","values.aks.yaml"]'

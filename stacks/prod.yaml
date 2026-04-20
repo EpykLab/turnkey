@@ -2,9 +2,9 @@ config:
   cluster.provider: aks
   cluster.provisionMode: existing
   cluster.name: turnkey-prod
-  cluster.region: usgovvirginia
-  cluster.nodeCount: "5"
-  cluster.nodeSize: Standard_D4s_v5
+  cluster.region: usgovarizona
+  cluster.nodeCount: "2"
+  cluster.nodeSize: Standard_D2s_v4
   cluster.env: prod
   cluster.kubeconfig: ""
   argocd.repoUrl: https://github.com/EpykLab/turnkey
@@ -13,3 +13,4 @@ config:
   doppler.project: stellarbridge
   doppler.config: prod
   otel.elasticEndpoint: https://elastic.gov.internal:4317
+  platform.valueFiles: '["values.yaml","values.aks.yaml"]'

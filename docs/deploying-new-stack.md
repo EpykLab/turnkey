@@ -131,7 +131,31 @@ kubectl wait --for=condition=Available deployment/argocd-server -n argocd --time
 
 The automated script waits up to 45 minutes for all platform Applications to reach `Synced/Healthy`. Expected timeline: ~15–20 minutes.
 
-### 1.3 Validate platform health
+### 1.3 If your turnkey repo is private, seed Argo CD Git credentials
+
+If `argocd.repoUrl` points to a private GitHub repository, create an Argo CD repository credential in the `argocd` namespace so Argo CD can read bootstrap and platform manifests.
+
+```bash
+kubectl create secret generic turnkey-private-repo \
+  -n argocd \
+  --from-literal=type=git \
+  --from-literal=url=https://github.com/<your-org>/<your-turnkey-repo> \
+  --from-literal=username=<github-username> \
+  --from-literal=password=<github-pat-with-repo-read> \
+  --save-config --dry-run=client -o yaml \
+| kubectl label --local -f - argocd.argoproj.io/secret-type=repository --dry-run=client -o yaml \
+| kubectl apply -f -
+```
+
+Quick verification:
+
+```bash
+kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=repository
+```
+
+Use a PAT with `repo` scope (read access is sufficient).
+
+### 1.4 Validate platform health
 
 ```bash
 # All platform applications should be Synced and Healthy
